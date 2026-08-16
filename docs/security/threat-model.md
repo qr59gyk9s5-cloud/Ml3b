@@ -1,0 +1,19 @@
+# Threat Model (MVP scope)
+
+Reviewed explicitly, revisited every phase that touches auth, payments, or
+the AI agent.
+
+| Area                            | Risk                                                                                                    | Status                                                                                                                                                                                        |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Double booking                  | Two confirmations racing for the same slot                                                              | Mitigated by DB exclusion constraint — see `docs/architecture/database.md#concurrency`. Must be proven with a real concurrency test, not just code review, before Phase 5 is considered done. |
+| Authorization drift             | A new route forgets a server-side check                                                                 | Mitigated by centralizing authz in `src/domain/authz` and testing the full matrix, not spot-checking individual routes.                                                                       |
+| Payment integrity (Phase 5.x)   | Charging without a valid capture, double-charging on retry, trusting a frontend-reported payment status | Authorize-then-capture flow, idempotent webhook processing, provider transaction reference stored, never trust client-reported status — see ADR-007.                                          |
+| Manual-calendar mismatch        | A venue keeps a side paper calendar and double-books anyway                                             | Product/adoption risk, not purely technical — manual booking entry must be fast enough that staff actually use it (§96 of the founder spec).                                                  |
+| Timezone/midnight-crossing bugs | Subtle "almost right" availability bugs near midnight or DST                                            | Explicit domain-layer test coverage required before trusting any schedule near midnight (Phase 4).                                                                                            |
+| AI over-permission (Phase 13+)  | Agent taking a HIGH_RISK action autonomously                                                            | Structurally prevented — see `docs/architecture/ai-agent.md`; HIGH_RISK actions are never automatable, not just discouraged.                                                                  |
+| Prompt injection (Phase 13+)    | Customer/venue text attempting to redirect agent behavior                                               | External text is always data, never instructions; enforcement is in code, not the model's judgment.                                                                                           |
+| Secret leakage                  | A credential lands in source, logs, or a PR                                                             | See `docs/security/secrets.md`.                                                                                                                                                               |
+| Cross-venue data leakage        | Venue A staff seeing Venue B's bookings/customers                                                       | `venue_members` scoping enforced server-side + RLS, tested explicitly per the authorization matrix.                                                                                           |
+
+This list grows as each phase introduces new surface area — update it
+alongside the phase, not retroactively.
