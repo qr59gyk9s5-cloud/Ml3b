@@ -9,12 +9,12 @@
  * filters status itself rather than assuming the database will. See
  * docs/architecture/authorization.md.
  *
- * Venue *mutations* and the lifecycle transition rules belong in the
- * Phase 3 domain service, not here — this file is reads only.
+ * Venue/facility *mutations* and the lifecycle transition rules live in
+ * lifecycle.ts and facilities.ts, not here — this file is reads only.
  */
-import { and, eq } from 'drizzle-orm';
+import { and, asc, eq } from 'drizzle-orm';
 import { getDb } from '@/lib/db/client';
-import { venues, type Venue } from '@/lib/db/schema';
+import { facilities, venues, type Facility, type Venue } from '@/lib/db/schema';
 
 /** Venues visible to an anonymous visitor: only ever ACTIVE ones. */
 export async function listActiveVenues(): Promise<Venue[]> {
@@ -32,4 +32,17 @@ export async function getPublicVenueBySlug(slug: string): Promise<Venue | null> 
     .from(venues)
     .where(and(eq(venues.slug, slug), eq(venues.status, 'ACTIVE')));
   return venue ?? null;
+}
+
+/** Active facilities at a venue, for the public facility list. Does not
+ * check the venue's own status — callers already have a venue in hand
+ * (typically from getPublicVenueBySlug, which already filtered to
+ * ACTIVE) and shouldn't need a second round trip to re-check it. */
+export async function listActiveFacilities(venueId: string): Promise<Facility[]> {
+  const db = getDb();
+  return db
+    .select()
+    .from(facilities)
+    .where(and(eq(facilities.venueId, venueId), eq(facilities.isActive, true)))
+    .orderBy(asc(facilities.name));
 }
