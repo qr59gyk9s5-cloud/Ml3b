@@ -4,13 +4,21 @@ PostgreSQL via Supabase. Extension required: `btree_gist` (powers the
 double-booking exclusion constraint below). Schema is applied via
 version-controlled migrations in `supabase/migrations/`.
 
-**Implementation status (Phase 2):** `profiles`, `platform_admins`,
-`venues`, and `venue_members` are live —
-`supabase/migrations/0000_identity_foundation.sql` (Drizzle-generated
-schema) and `0001_identity_auth_and_rls.sql` (hand-written: the
-`auth.users` FK, the signup trigger, and RLS policies). Every other table
-below is still just this design document until the phase that needs it
-implements it. Drizzle source lives in `src/lib/db/schema/`.
+**Implementation status:**
+
+- **Phase 2** — `profiles`, `platform_admins`, `venues`, `venue_members`:
+  `0000_identity_foundation.sql` (Drizzle-generated) +
+  `0001_identity_auth_and_rls.sql` (hand-written: `auth.users` FK, signup
+  trigger, RLS).
+- **Phase 3** — `sports`, `facilities`: `0002_venue_domain.sql` +
+  `0003_venue_domain_rls.sql`. Venue lifecycle transitions
+  (`src/domain/venue/lifecycle.ts`) and facility management
+  (`src/domain/venue/facilities.ts`) are real domain services, not just
+  schema — see `docs/product/venue-lifecycle.md` for the transition matrix.
+
+Every other table below is still just this design document until the
+phase that needs it implements it. Drizzle source lives in
+`src/lib/db/schema/`.
 
 ## Enums
 
