@@ -18,6 +18,8 @@ import postgres from 'postgres';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import { platformAdmins, sports, venueMembers, venues } from '../../src/lib/db/schema';
 import { createFacility } from '../../src/domain/venue/facilities';
+import { createAvailabilityRule } from '../../src/domain/availability/rules';
+import { createAvailabilityException } from '../../src/domain/availability/exceptions';
 import { closeDb } from '../../src/lib/db/client';
 
 const databaseUrl = process.env.DATABASE_URL;
@@ -81,7 +83,7 @@ async function main() {
 
     console.log('Seeding facilities (via the real domain service)...');
     const ownerActor = { userId: ownerId, isPlatformAdmin: false };
-    await createFacility(venue.id, ownerActor, {
+    const pitch1 = await createFacility(venue.id, ownerActor, {
       sportId: football.id,
       name: 'Football Pitch 1',
       slug: 'football-pitch-1',
@@ -92,7 +94,7 @@ async function main() {
       basePriceMinor: 50000,
       currency: 'EGP',
     });
-    await createFacility(venue.id, ownerActor, {
+    const pitch2 = await createFacility(venue.id, ownerActor, {
       sportId: football.id,
       name: 'Football Pitch 2',
       slug: 'football-pitch-2',
@@ -103,7 +105,7 @@ async function main() {
       basePriceMinor: 50000,
       currency: 'EGP',
     });
-    await createFacility(venue.id, ownerActor, {
+    const padelCourt = await createFacility(venue.id, ownerActor, {
       sportId: padel.id,
       name: 'Padel Court 1',
       slug: 'padel-court-1',
@@ -113,6 +115,39 @@ async function main() {
       maximumDurationMinutes: 90,
       basePriceMinor: 40000,
       currency: 'EGP',
+    });
+
+    console.log('Seeding weekly availability (09:00 -> 01:00 next day, every day)...');
+    for (const facility of [pitch1, pitch2]) {
+      for (let dayOfWeek = 0; dayOfWeek <= 6; dayOfWeek++) {
+        await createAvailabilityRule(facility.id, ownerActor, {
+          dayOfWeek,
+          startTime: '09:00',
+          endTime: '01:00', // crosses midnight — demonstrates ADR-003's midnight-crossing handling
+          isClosed: false,
+        });
+      }
+    }
+    for (let dayOfWeek = 0; dayOfWeek <= 6; dayOfWeek++) {
+      await createAvailabilityRule(padelCourt.id, ownerActor, {
+        dayOfWeek,
+        startTime: '08:00',
+        endTime: '23:00',
+        isClosed: false,
+      });
+    }
+
+    console.log('Seeding a maintenance closure on Football Pitch 1 tomorrow morning...');
+    const tomorrow = new Date();
+    tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
+    tomorrow.setUTCHours(6, 0, 0, 0);
+    const tomorrowEnd = new Date(tomorrow.getTime() + 2 * 60 * 60 * 1000);
+    await createAvailabilityException(pitch1.id, ownerActor, {
+      kind: 'MAINTENANCE',
+      startsAt: tomorrow,
+      endsAt: tomorrowEnd,
+      isClosed: true,
+      reason: 'Pitch resurfacing',
     });
 
     console.log('Seeding receptionist...');
