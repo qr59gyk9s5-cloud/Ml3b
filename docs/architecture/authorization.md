@@ -43,11 +43,28 @@ the `OWNER`.
 
 1. **Server-side checks in `src/domain/authz`** — the actual source of
    truth, exercised by every route handler and background job.
-2. **Supabase Row Level Security** as defense-in-depth once the schema
-   exists (Phase 2+) — every non-trivial policy documented inline in its
-   migration file, no broad "allow all" development shortcuts.
+2. **Supabase Row Level Security** as defense-in-depth (live since Phase 2
+   — see `supabase/migrations/0001_identity_auth_and_rls.sql`) — every
+   non-trivial policy documented inline in its migration file, no broad
+   "allow all" development shortcuts.
 3. **UI hides what a user can't do** — a courtesy, never the enforcement
    mechanism.
+
+### RLS gotcha: self-referencing policies need a `SECURITY DEFINER` helper
+
+A policy on `platform_admins` that queries `platform_admins` (or on
+`venue_members` that queries `venue_members`) to check "is the requester
+an admin/teammate" is self-referencing — Postgres has to re-evaluate the
+same policy to evaluate itself, and raises "infinite recursion detected in
+policy." This is exactly the kind of bug an RLS integration test catches
+and a code review doesn't (see ADR-010) — it surfaced in Phase 2's own
+test run. The fix, used throughout `0001_identity_auth_and_rls.sql`: put
+the lookup in a `SECURITY DEFINER` SQL function
+(`is_platform_admin`, `has_venue_role`, `is_venue_teammate`) that bypasses
+RLS for just that one lookup, and call the function from every policy
+instead of inlining the subquery. Reuse those three functions — don't
+re-invent the inline version when Phase 3+ adds policies to `facilities`,
+`bookings`, etc.
 
 ## Admin override, specifically
 

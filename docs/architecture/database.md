@@ -2,8 +2,15 @@
 
 PostgreSQL via Supabase. Extension required: `btree_gist` (powers the
 double-booking exclusion constraint below). Schema is applied via
-version-controlled migrations in `supabase/migrations/` — created starting
-Phase 2, not yet present.
+version-controlled migrations in `supabase/migrations/`.
+
+**Implementation status (Phase 2):** `profiles`, `platform_admins`,
+`venues`, and `venue_members` are live —
+`supabase/migrations/0000_identity_foundation.sql` (Drizzle-generated
+schema) and `0001_identity_auth_and_rls.sql` (hand-written: the
+`auth.users` FK, the signup trigger, and RLS policies). Every other table
+below is still just this design document until the phase that needs it
+implements it. Drizzle source lives in `src/lib/db/schema/`.
 
 ## Enums
 

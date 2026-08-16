@@ -23,7 +23,7 @@ src/domain/        booking, availability, venue, authz, notifications, review
 src/lib/           db (Drizzle), auth (Supabase), notifications, validation, config
 src/components/    shared UI
 src/testing/       test utilities
-supabase/          migrations/, seed/  (created starting Phase 2)
+supabase/          migrations/, seed/  (identity/auth foundation live since Phase 2)
 docs/              product/, architecture/, security/, operations/, adr/
 ```
 
@@ -67,7 +67,9 @@ docs/              product/, architecture/, security/, operations/, adr/
 ```bash
 pnpm dev / build / start
 pnpm lint / format / format:check / typecheck
-pnpm test / test:watch
+pnpm test / test:watch            # unit/domain — no database needed
+pnpm test:integration             # real Postgres — migrations, RLS, constraints
+pnpm db:generate / db:migrate / db:seed
 ```
 
 ## Git workflow
