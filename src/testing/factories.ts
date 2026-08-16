@@ -9,17 +9,21 @@ import { randomUUID } from 'node:crypto';
 import { eq } from 'drizzle-orm';
 import { getRawTestClient, getTestDb } from './db';
 import {
+  availabilityExceptions,
+  availabilityRules,
   facilities,
   profiles,
   sports,
   venueMembers,
   venues,
+  type AvailabilityException,
+  type AvailabilityRule,
   type Facility,
   type Profile,
   type Sport,
   type Venue,
 } from '@/lib/db/schema';
-import type { VenueRole, VenueStatus } from '@/lib/config/constants';
+import type { AvailabilityExceptionKind, VenueRole, VenueStatus } from '@/lib/config/constants';
 
 export async function createTestUser(fullName: string, email?: string): Promise<Profile> {
   const sql = getRawTestClient();
@@ -70,7 +74,12 @@ export async function createTestSport(code = `sport-${randomUUID()}`): Promise<S
 export async function createTestFacility(
   venueId: string,
   sportId: string,
-  overrides: { name?: string; isActive?: boolean; basePriceMinor?: number } = {},
+  overrides: {
+    name?: string;
+    isActive?: boolean;
+    basePriceMinor?: number;
+    slotDurationMinutes?: number;
+  } = {},
 ): Promise<Facility> {
   const db = getTestDb();
   const [facility] = await db
@@ -82,7 +91,51 @@ export async function createTestFacility(
       slug: `facility-${randomUUID()}`,
       basePriceMinor: overrides.basePriceMinor ?? 50000,
       isActive: overrides.isActive ?? true,
+      slotDurationMinutes: overrides.slotDurationMinutes ?? 60,
     })
     .returning();
   return facility;
+}
+
+export async function createTestAvailabilityRule(
+  facilityId: string,
+  overrides: { dayOfWeek?: number; startTime?: string; endTime?: string; isClosed?: boolean } = {},
+): Promise<AvailabilityRule> {
+  const db = getTestDb();
+  const [rule] = await db
+    .insert(availabilityRules)
+    .values({
+      facilityId,
+      dayOfWeek: overrides.dayOfWeek ?? 0,
+      startTime: overrides.startTime ?? '09:00',
+      endTime: overrides.endTime ?? '17:00',
+      isClosed: overrides.isClosed ?? false,
+    })
+    .returning();
+  return rule;
+}
+
+export async function createTestAvailabilityException(
+  facilityId: string,
+  createdBy: string,
+  overrides: {
+    kind?: AvailabilityExceptionKind;
+    startsAt?: Date;
+    endsAt?: Date;
+    isClosed?: boolean;
+  } = {},
+): Promise<AvailabilityException> {
+  const db = getTestDb();
+  const [exception] = await db
+    .insert(availabilityExceptions)
+    .values({
+      facilityId,
+      createdBy,
+      kind: overrides.kind ?? 'MAINTENANCE',
+      startsAt: overrides.startsAt ?? new Date('2026-08-16T07:00:00.000Z'),
+      endsAt: overrides.endsAt ?? new Date('2026-08-16T08:00:00.000Z'),
+      isClosed: overrides.isClosed ?? true,
+    })
+    .returning();
+  return exception;
 }
