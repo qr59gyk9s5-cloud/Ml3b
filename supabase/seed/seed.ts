@@ -16,7 +16,9 @@
  */
 import postgres from 'postgres';
 import { drizzle } from 'drizzle-orm/postgres-js';
-import { platformAdmins, venueMembers, venues } from '../../src/lib/db/schema';
+import { platformAdmins, sports, venueMembers, venues } from '../../src/lib/db/schema';
+import { createFacility } from '../../src/domain/venue/facilities';
+import { closeDb } from '../../src/lib/db/client';
 
 const databaseUrl = process.env.DATABASE_URL;
 if (!databaseUrl) {
@@ -45,6 +47,18 @@ async function main() {
       );
     }
 
+    console.log('Seeding sports...');
+    const [football] = await db
+      .insert(sports)
+      .values({ code: 'football', displayName: 'Football' })
+      .returning();
+    const [padel] = await db
+      .insert(sports)
+      .values({ code: 'padel', displayName: 'Padel' })
+      .returning();
+    await db.insert(sports).values({ code: 'tennis', displayName: 'Tennis' });
+    await db.insert(sports).values({ code: 'basketball', displayName: 'Basketball' });
+
     console.log('Seeding admin...');
     const adminId = await seedUser(sql, 'Founder Admin', 'admin@sportsvenue.local');
     await db.insert(platformAdmins).values({ userId: adminId });
@@ -64,6 +78,42 @@ async function main() {
       })
       .returning();
     await db.insert(venueMembers).values({ venueId: venue.id, userId: ownerId, role: 'OWNER' });
+
+    console.log('Seeding facilities (via the real domain service)...');
+    const ownerActor = { userId: ownerId, isPlatformAdmin: false };
+    await createFacility(venue.id, ownerActor, {
+      sportId: football.id,
+      name: 'Football Pitch 1',
+      slug: 'football-pitch-1',
+      bookingMode: 'REQUEST_TO_BOOK',
+      slotDurationMinutes: 60,
+      minimumDurationMinutes: 60,
+      maximumDurationMinutes: 120,
+      basePriceMinor: 50000,
+      currency: 'EGP',
+    });
+    await createFacility(venue.id, ownerActor, {
+      sportId: football.id,
+      name: 'Football Pitch 2',
+      slug: 'football-pitch-2',
+      bookingMode: 'REQUEST_TO_BOOK',
+      slotDurationMinutes: 60,
+      minimumDurationMinutes: 60,
+      maximumDurationMinutes: 120,
+      basePriceMinor: 50000,
+      currency: 'EGP',
+    });
+    await createFacility(venue.id, ownerActor, {
+      sportId: padel.id,
+      name: 'Padel Court 1',
+      slug: 'padel-court-1',
+      bookingMode: 'REQUEST_TO_BOOK',
+      slotDurationMinutes: 90,
+      minimumDurationMinutes: 90,
+      maximumDurationMinutes: 90,
+      basePriceMinor: 40000,
+      currency: 'EGP',
+    });
 
     console.log('Seeding receptionist...');
     const receptionistId = await seedUser(sql, 'Salma Adel', 'salma@elnady.local', '+201007654321');
@@ -100,6 +150,11 @@ async function main() {
     console.log('Done.');
   } finally {
     await sql.end({ timeout: 5 });
+    // createFacility() above went through getDb() (src/lib/db/client.ts),
+    // a second, separate connection pool from this script's own `sql` —
+    // without closing it too, the process hangs on an open handle instead
+    // of exiting.
+    await closeDb();
   }
 }
 
