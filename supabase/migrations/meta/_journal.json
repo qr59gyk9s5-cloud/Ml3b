@@ -15,6 +15,20 @@
       "when": 1786883881599,
       "tag": "0001_identity_auth_and_rls",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1786885974397,
+      "tag": "0002_venue_domain",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1786885984193,
+      "tag": "0003_venue_domain_rls",
+      "breakpoints": true
     }
   ]
 }
