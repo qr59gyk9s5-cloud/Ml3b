@@ -8,7 +8,17 @@
 import { randomUUID } from 'node:crypto';
 import { eq } from 'drizzle-orm';
 import { getRawTestClient, getTestDb } from './db';
-import { profiles, venueMembers, venues, type Profile, type Venue } from '@/lib/db/schema';
+import {
+  facilities,
+  profiles,
+  sports,
+  venueMembers,
+  venues,
+  type Facility,
+  type Profile,
+  type Sport,
+  type Venue,
+} from '@/lib/db/schema';
 import type { VenueRole, VenueStatus } from '@/lib/config/constants';
 
 export async function createTestUser(fullName: string, email?: string): Promise<Profile> {
@@ -49,4 +59,30 @@ export async function addVenueMember(venueId: string, userId: string, role: Venu
   const db = getTestDb();
   const [member] = await db.insert(venueMembers).values({ venueId, userId, role }).returning();
   return member;
+}
+
+export async function createTestSport(code = `sport-${randomUUID()}`): Promise<Sport> {
+  const db = getTestDb();
+  const [sport] = await db.insert(sports).values({ code, displayName: code }).returning();
+  return sport;
+}
+
+export async function createTestFacility(
+  venueId: string,
+  sportId: string,
+  overrides: { name?: string; isActive?: boolean; basePriceMinor?: number } = {},
+): Promise<Facility> {
+  const db = getTestDb();
+  const [facility] = await db
+    .insert(facilities)
+    .values({
+      venueId,
+      sportId,
+      name: overrides.name ?? 'Test Facility',
+      slug: `facility-${randomUUID()}`,
+      basePriceMinor: overrides.basePriceMinor ?? 50000,
+      isActive: overrides.isActive ?? true,
+    })
+    .returning();
+  return facility;
 }
