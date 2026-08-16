@@ -1,7 +1,8 @@
 /**
- * Local development seed data — 2 sports-adjacent people, one venue awaiting
- * approval, one admin. Never real customer information (see AGENTS.md /
- * founder spec §61).
+ * Local development seed data — one venue already live (ACTIVE), one
+ * awaiting approval (PENDING_REVIEW) so the admin-approval gate has
+ * something to demonstrate, plus staff and a plain customer. Never real
+ * customer information (see AGENTS.md / founder spec §61).
  *
  * IMPORTANT: this inserts directly into `auth.users`, which only exists
  * because of the local-only shim (src/testing/sql/local-auth-shim.sql). A
@@ -48,16 +49,17 @@ async function main() {
     const adminId = await seedUser(sql, 'Founder Admin', 'admin@sportsvenue.local');
     await db.insert(platformAdmins).values({ userId: adminId });
 
-    console.log('Seeding venue owner + venue (PENDING_REVIEW)...');
+    console.log('Seeding venue owner + ACTIVE venue...');
     const ownerId = await seedUser(sql, 'Karim Youssef', 'karim@elnady.local', '+201001234567');
     const [venue] = await db
       .insert(venues)
       .values({
         slug: 'el-nady-sports-club',
         name: 'El Nady Sports Club',
+        description: 'Floodlit 5-a-side pitches and padel courts in Nasr City, open until 1am.',
         city: 'Cairo',
         district: 'Nasr City',
-        status: 'PENDING_REVIEW',
+        status: 'ACTIVE',
         createdBy: ownerId,
       })
       .returning();
@@ -68,6 +70,29 @@ async function main() {
     await db
       .insert(venueMembers)
       .values({ venueId: venue.id, userId: receptionistId, role: 'RECEPTIONIST' });
+
+    console.log('Seeding a second venue owner + venue (PENDING_REVIEW)...');
+    const secondOwnerId = await seedUser(
+      sql,
+      'Mona Fathy',
+      'mona@victorycourts.local',
+      '+201002223344',
+    );
+    const [secondVenue] = await db
+      .insert(venues)
+      .values({
+        slug: 'victory-courts',
+        name: 'Victory Courts',
+        description: 'Padel and tennis courts in Heliopolis.',
+        city: 'Cairo',
+        district: 'Heliopolis',
+        status: 'PENDING_REVIEW',
+        createdBy: secondOwnerId,
+      })
+      .returning();
+    await db
+      .insert(venueMembers)
+      .values({ venueId: secondVenue.id, userId: secondOwnerId, role: 'OWNER' });
 
     console.log('Seeding a plain customer...');
     await seedUser(sql, 'Ahmed Mostafa', 'ahmed@example.local', '+201009998888');

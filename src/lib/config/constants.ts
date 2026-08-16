@@ -60,6 +60,16 @@ export const VENUE_CANCELLATION_REASON = [
 ] as const;
 export type VenueCancellationReason = (typeof VENUE_CANCELLATION_REASON)[number];
 
+/** Display names for the ISO country codes venues.country actually holds.
+ * Grows as we launch new markets — never hardcode "Egypt" in UI copy. */
+export const COUNTRY_NAMES: Record<string, string> = {
+  EG: 'Egypt',
+};
+
+export function countryDisplayName(code: string): string {
+  return COUNTRY_NAMES[code] ?? code;
+}
+
 /** Customer cancellation is blocked once we're inside this many hours of start_at. */
 export const CANCELLATION_CUTOFF_HOURS = 2;
 

@@ -4,6 +4,7 @@ import {
   CANCELLATION_CUTOFF_HOURS,
   CANCELLATION_REFUND_RATE,
   VENUE_CANCELLATION_REASON,
+  countryDisplayName,
 } from './constants';
 
 describe('domain constants', () => {
@@ -19,5 +20,10 @@ describe('domain constants', () => {
   it('only allows template cancellation reasons (no free text)', () => {
     expect(VENUE_CANCELLATION_REASON).toContain('OTHER');
     expect(VENUE_CANCELLATION_REASON.length).toBeGreaterThan(1);
+  });
+
+  it('displays a friendly name for a known country code and falls back to the code otherwise', () => {
+    expect(countryDisplayName('EG')).toBe('Egypt');
+    expect(countryDisplayName('ZZ')).toBe('ZZ');
   });
 });
