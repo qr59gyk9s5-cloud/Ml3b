@@ -19,11 +19,11 @@ one. See `docs/product/product-overview.md`.
 
 ```
 src/app/          Next.js routes — thin, no business logic
-src/domain/        booking, availability, venue (lifecycle + facilities live), authz, notifications, review
+src/domain/        booking, availability (computed, not stored), venue (lifecycle + facilities), authz, notifications, review
 src/lib/           db (Drizzle), auth (Supabase), notifications, validation, config
 src/components/    shared UI
 src/testing/       test utilities
-supabase/          migrations/, seed/  (identity + venue domain live — Phases 2-3)
+supabase/          migrations/, seed/  (identity + venue domain live — Phases 2-4)
 docs/              product/, architecture/, security/, operations/, adr/
 ```
 

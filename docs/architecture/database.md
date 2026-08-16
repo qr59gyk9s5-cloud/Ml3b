@@ -15,6 +15,10 @@ version-controlled migrations in `supabase/migrations/`.
   (`src/domain/venue/lifecycle.ts`) and facility management
   (`src/domain/venue/facilities.ts`) are real domain services, not just
   schema — see `docs/product/venue-lifecycle.md` for the transition matrix.
+- **Phase 4** — `availability_rules`, `availability_exceptions`:
+  `0004_availability_domain.sql` + `0005_availability_domain_rls.sql`.
+  Availability is computed, not stored — see
+  `docs/architecture/availability.md` for the algorithm.
 
 Every other table below is still just this design document until the
 phase that needs it implements it. Drizzle source lives in
