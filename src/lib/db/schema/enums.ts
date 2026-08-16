@@ -7,8 +7,14 @@
  * introduce the tables that use them (Phases 4/5), not speculatively now.
  */
 import { pgEnum } from 'drizzle-orm/pg-core';
-import { BOOKING_MODE, VENUE_ROLE, VENUE_STATUS } from '@/lib/config/constants';
+import {
+  AVAILABILITY_EXCEPTION_KIND,
+  BOOKING_MODE,
+  VENUE_ROLE,
+  VENUE_STATUS,
+} from '@/lib/config/constants';
 
 export const venueRoleEnum = pgEnum('venue_role', [...VENUE_ROLE]);
 export const venueStatusEnum = pgEnum('venue_status', [...VENUE_STATUS]);
 export const bookingModeEnum = pgEnum('booking_mode', [...BOOKING_MODE]);
+export const exceptionKindEnum = pgEnum('exception_kind', [...AVAILABILITY_EXCEPTION_KIND]);

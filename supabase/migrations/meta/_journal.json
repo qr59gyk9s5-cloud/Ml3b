@@ -29,6 +29,20 @@
       "when": 1786885984193,
       "tag": "0003_venue_domain_rls",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1786892388234,
+      "tag": "0004_availability_domain",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1786892393690,
+      "tag": "0005_availability_domain_rls",
+      "breakpoints": true
     }
   ]
 }

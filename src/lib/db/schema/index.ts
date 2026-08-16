@@ -5,3 +5,4 @@ export * from './venues';
 export * from './venue-members';
 export * from './sports';
 export * from './facilities';
+export * from './availability';
