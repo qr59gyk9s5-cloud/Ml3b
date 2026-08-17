@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Bell, CalendarCheck } from 'lucide-react';
+import { Bell, CalendarCheck, ShieldCheck } from 'lucide-react';
 import { getSessionActor } from '@/lib/auth/session';
 import { countUnreadNotifications } from '@/domain/notifications/queries';
 import { signOutAction } from '@/app/(auth)/actions';
@@ -26,6 +26,15 @@ export async function SiteHeader() {
 
           {actor ? (
             <>
+              {actor.isPlatformAdmin ? (
+                <Link
+                  href="/admin"
+                  className="focus-visible:outline-accent flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-muted transition-colors hover:bg-surface-2 hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+                >
+                  <ShieldCheck className="h-3.5 w-3.5" aria-hidden />
+                  <span className="hidden sm:inline">Admin</span>
+                </Link>
+              ) : null}
               <Link
                 href="/notifications"
                 className="focus-visible:outline-accent relative flex items-center rounded-lg p-1.5 text-muted transition-colors hover:bg-surface-2 hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
