@@ -4,7 +4,13 @@ import { VENUE_STATUS, type VenueStatus } from '@/lib/config/constants';
 import type { VenueAuthzContext } from '@/domain/authz/venue';
 
 function ctx(overrides: Partial<VenueAuthzContext> = {}): VenueAuthzContext {
-  return { userId: 'user-1', isPlatformAdmin: false, venueRole: null, ...overrides };
+  return {
+    userId: 'user-1',
+    isPlatformAdmin: false,
+    venueRole: null,
+    isSuspended: false,
+    ...overrides,
+  };
 }
 
 const owner = ctx({ venueRole: 'OWNER' });

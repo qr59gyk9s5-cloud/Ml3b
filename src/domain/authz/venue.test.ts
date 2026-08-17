@@ -9,7 +9,13 @@ import {
 } from './venue';
 
 function ctx(overrides: Partial<VenueAuthzContext> = {}): VenueAuthzContext {
-  return { userId: 'user-1', isPlatformAdmin: false, venueRole: null, ...overrides };
+  return {
+    userId: 'user-1',
+    isPlatformAdmin: false,
+    venueRole: null,
+    isSuspended: false,
+    ...overrides,
+  };
 }
 
 describe('venue authz', () => {

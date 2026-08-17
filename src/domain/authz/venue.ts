@@ -19,6 +19,11 @@ export interface VenueAuthzContext {
    * they're not a member of it. Never infer this from a role at a
    * *different* venue. */
   venueRole: VenueRole | null;
+  /** A suspended non-admin account cannot write anything — checked as a
+   * blanket precondition by transitionVenueStatus, not baked into the
+   * per-edge `allow` functions below (those are about role, not account
+   * standing). See src/domain/admin/suspension.ts. */
+  isSuspended: boolean;
 }
 
 export function isPlatformAdmin(ctx: VenueAuthzContext): boolean {

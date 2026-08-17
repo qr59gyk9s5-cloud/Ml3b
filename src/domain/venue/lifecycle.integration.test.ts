@@ -1,6 +1,13 @@
 import { beforeAll, afterAll, describe, expect, it } from 'vitest';
-import { closeTestDatabase, resetTestDatabase } from '@/testing/db';
-import { addVenueMember, createTestUser, createTestVenue } from '@/testing/factories';
+import { eq } from 'drizzle-orm';
+import { closeTestDatabase, getTestDb, resetTestDatabase } from '@/testing/db';
+import {
+  addVenueMember,
+  createTestUser,
+  createTestVenue,
+  suspendTestUser,
+} from '@/testing/factories';
+import { auditLogs } from '@/lib/db/schema';
 import { transitionVenueStatus } from './lifecycle';
 import { DomainError } from '@/domain/errors';
 
@@ -57,8 +64,23 @@ describe('transitionVenueStatus (DB-backed)', () => {
       venueId: venue.id,
       targetStatus: 'SUSPENDED',
       actor: { userId: admin.id, isPlatformAdmin: true },
+      reason: 'Testing suspension',
     });
     expect(again.status).toBe('SUSPENDED');
+  });
+
+  it('refuses to suspend without a reason', async () => {
+    const owner = await createTestUser('Owner');
+    const admin = await createTestUser('Admin');
+    const venue = await createTestVenue(owner.id, { status: 'ACTIVE' });
+
+    await expect(
+      transitionVenueStatus({
+        venueId: venue.id,
+        targetStatus: 'SUSPENDED',
+        actor: { userId: admin.id, isPlatformAdmin: true },
+      }),
+    ).rejects.toMatchObject({ code: 'VALIDATION_FAILED' });
   });
 
   it('rejects a transition with no rule at all (DRAFT straight to ACTIVE)', async () => {
@@ -113,5 +135,56 @@ describe('transitionVenueStatus (DB-backed)', () => {
         actor: { userId: admin.id, isPlatformAdmin: true },
       }),
     ).rejects.toBeInstanceOf(DomainError);
+  });
+
+  describe('admin moderation is audited (Phase 11)', () => {
+    it('records an audit_logs row when an admin approves a venue', async () => {
+      const owner = await createTestUser('Owner');
+      const admin = await createTestUser('Admin');
+      const venue = await createTestVenue(owner.id, { status: 'PENDING_REVIEW' });
+
+      await transitionVenueStatus({
+        venueId: venue.id,
+        targetStatus: 'ACTIVE',
+        actor: { userId: admin.id, isPlatformAdmin: true },
+      });
+
+      const db = getTestDb();
+      const [log] = await db.select().from(auditLogs).where(eq(auditLogs.resourceId, venue.id));
+      expect(log.action).toBe('VENUE_ACTIVE');
+      expect(log.actorType).toBe('ADMIN');
+      expect(log.actorId).toBe(admin.id);
+    });
+
+    it('does not audit an owner submitting their own venue for review', async () => {
+      const owner = await createTestUser('Owner');
+      const venue = await createTestVenue(owner.id, { status: 'DRAFT' });
+
+      await transitionVenueStatus({
+        venueId: venue.id,
+        targetStatus: 'PENDING_REVIEW',
+        actor: { userId: owner.id, isPlatformAdmin: false },
+      });
+
+      const db = getTestDb();
+      const logs = await db.select().from(auditLogs).where(eq(auditLogs.resourceId, venue.id));
+      expect(logs).toHaveLength(0);
+    });
+  });
+
+  describe('suspended accounts', () => {
+    it('blocks a suspended owner from submitting their venue for review', async () => {
+      const owner = await createTestUser('Owner');
+      await suspendTestUser(owner.id);
+      const venue = await createTestVenue(owner.id, { status: 'DRAFT' });
+
+      await expect(
+        transitionVenueStatus({
+          venueId: venue.id,
+          targetStatus: 'PENDING_REVIEW',
+          actor: { userId: owner.id, isPlatformAdmin: false },
+        }),
+      ).rejects.toMatchObject({ code: 'FORBIDDEN' });
+    });
   });
 });

@@ -9,6 +9,7 @@ import { and, eq } from 'drizzle-orm';
 import { getDb } from '@/lib/db/client';
 import { venueMembers } from '@/lib/db/schema';
 import type { VenueAuthzContext } from '@/domain/authz/venue';
+import { isUserSuspended } from '@/domain/admin/suspension';
 
 export interface VenueActor {
   userId: string;
@@ -20,14 +21,19 @@ export async function resolveVenueAuthzContext(
   actor: VenueActor,
 ): Promise<VenueAuthzContext> {
   const db = getDb();
-  const [membership] = await db
-    .select()
-    .from(venueMembers)
-    .where(and(eq(venueMembers.venueId, venueId), eq(venueMembers.userId, actor.userId)));
+  const [membership, isSuspended] = await Promise.all([
+    db
+      .select()
+      .from(venueMembers)
+      .where(and(eq(venueMembers.venueId, venueId), eq(venueMembers.userId, actor.userId)))
+      .then((rows) => rows[0]),
+    isUserSuspended(actor.userId),
+  ]);
 
   return {
     userId: actor.userId,
     isPlatformAdmin: actor.isPlatformAdmin,
     venueRole: membership?.role ?? null,
+    isSuspended,
   };
 }

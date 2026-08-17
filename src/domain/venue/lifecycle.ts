@@ -19,6 +19,13 @@ import {
   type VenueAuthzContext,
 } from '@/domain/authz/venue';
 import { resolveVenueAuthzContext, type VenueActor } from './authz-context';
+import { recordAuditLog } from '@/domain/audit/log';
+
+/** Admin moderation actions worth a mandatory reason — mirrors
+ * src/domain/booking/transition.ts's REASON_REQUIRED_TARGETS. Approving
+ * or reactivating isn't a "why" moment worth mandating; suspending one
+ * is. */
+const REASON_REQUIRED_TARGETS: ReadonlySet<VenueStatus> = new Set(['SUSPENDED']);
 
 interface TransitionRule {
   from: VenueStatus;
@@ -70,6 +77,11 @@ export interface TransitionVenueParams {
   venueId: string;
   targetStatus: VenueStatus;
   actor: VenueActor;
+  /** Required when suspending (moderation, not a fixed vocabulary —
+   * unlike booking cancellation reasons, there's no small closed set of
+   * "why we suspended a venue"). Recorded on audit_logs for every
+   * admin-performed transition, mandatory or not. */
+  reason?: string;
 }
 
 /**
@@ -87,6 +99,10 @@ export async function transitionVenueStatus(params: TransitionVenueParams): Prom
 
   const ctx = await resolveVenueAuthzContext(params.venueId, params.actor);
 
+  if (ctx.isSuspended && !ctx.isPlatformAdmin) {
+    throw new DomainError('FORBIDDEN', 'Your account has been suspended.');
+  }
+
   const rule = findVenueTransitionRule(venue.status, params.targetStatus);
   if (!rule) {
     throw new DomainError(
@@ -98,10 +114,29 @@ export async function transitionVenueStatus(params: TransitionVenueParams): Prom
     throw new DomainError('FORBIDDEN', 'You do not have permission to make this change.');
   }
 
+  if (REASON_REQUIRED_TARGETS.has(params.targetStatus) && !params.reason?.trim()) {
+    throw new DomainError('VALIDATION_FAILED', 'A reason is required.');
+  }
+
   const [updated] = await db
     .update(venues)
     .set({ status: params.targetStatus, updatedAt: new Date() })
     .where(eq(venues.id, params.venueId))
     .returning();
+
+  // Every admin-performed moderation action is audited — "Approve/
+  // moderate/suspend venue" (docs/architecture/authorization.md). Not
+  // logged for an owner/manager's own routine DRAFT->PENDING_REVIEW etc.
+  if (params.actor.isPlatformAdmin) {
+    await recordAuditLog({
+      actorType: 'ADMIN',
+      actorId: params.actor.userId,
+      action: `VENUE_${params.targetStatus}`,
+      resourceType: 'venue',
+      resourceId: venue.id,
+      metadata: { from: venue.status, to: params.targetStatus, reason: params.reason ?? null },
+    });
+  }
+
   return updated;
 }
