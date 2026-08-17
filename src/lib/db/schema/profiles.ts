@@ -14,6 +14,18 @@ export const profiles = pgTable('profiles', {
   fullName: text('full_name').notNull(),
   phone: text('phone'),
   avatarUrl: text('avatar_url'),
+  /** Admin moderation (Phase 11) — reversible, distinct from a permanent
+   * ban (CLAUDE.md's forbidden-without-approval list; see
+   * src/domain/admin/users.ts). null = not suspended. A single current
+   * state, not an append-only grant list like platform_admins — the
+   * "who did this and why" history lives in audit_logs. */
+  suspendedAt: timestamp('suspended_at', { withTimezone: true }),
+  suspendedReason: text('suspended_reason'),
+  /** No Drizzle .references() here — a same-table FK needs the circular
+   * AnyPgColumn typing dance for no real benefit; the FK constraint
+   * itself is added by hand in the RLS migration, same pattern as
+   * profiles.id -> auth.users.id. */
+  suspendedBy: uuid('suspended_by'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });

@@ -85,6 +85,20 @@
       "when": 1786969882000,
       "tag": "0011_payments_rls",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1786993216908,
+      "tag": "0012_admin_domain",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1786993216909,
+      "tag": "0013_admin_domain_rls",
+      "breakpoints": true
     }
   ]
 }

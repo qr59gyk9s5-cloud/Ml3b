@@ -9,3 +9,4 @@ export * from './availability';
 export * from './bookings';
 export * from './notifications';
 export * from './payments';
+export * from './audit-logs';
