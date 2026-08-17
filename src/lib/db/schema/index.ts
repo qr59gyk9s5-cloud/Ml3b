@@ -7,3 +7,4 @@ export * from './sports';
 export * from './facilities';
 export * from './availability';
 export * from './bookings';
+export * from './notifications';

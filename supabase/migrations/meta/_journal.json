@@ -57,6 +57,13 @@
       "when": 1786915776584,
       "tag": "0007_booking_domain_constraints_and_rls",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1786961842683,
+      "tag": "0008_warm_banshee",
+      "breakpoints": true
     }
   ]
 }

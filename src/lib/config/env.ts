@@ -29,6 +29,12 @@ const envSchema = z.object({
   //     src/app/api/cron/*; see docs/architecture/background-jobs.md.
   //     Optional so local tooling doesn't require a secret nothing calls yet.
   CRON_SECRET: z.string().min(1).optional(),
+
+  // --- Email (Phase 9) — no account connected yet; both optional, and
+  //     src/lib/notifications falls back to a logging-only provider
+  //     until both are set. See docs/architecture/notifications.md.
+  RESEND_API_KEY: z.string().min(1).optional(),
+  RESEND_FROM_EMAIL: z.string().email().optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;

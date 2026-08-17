@@ -84,6 +84,36 @@ export const BOOKING_REQUEST_EXPIRY_MINUTES = 30;
 /** Platform commission per completed booking, in minor currency units (EGP piastres... i.e. 5000 = 50.00 EGP). */
 export const DEFAULT_COMMISSION_MINOR = 5000;
 
+/** docs/architecture/notifications.md. Plain text columns in the DB (not
+ * Postgres enums, unlike bookings.status) — see notifications.ts schema. */
+export const NOTIFICATION_CHANNEL = ['IN_APP', 'EMAIL'] as const;
+export type NotificationChannel = (typeof NOTIFICATION_CHANNEL)[number];
+
+export const NOTIFICATION_STATUS = ['PENDING', 'SENT', 'FAILED'] as const;
+export type NotificationStatus = (typeof NOTIFICATION_STATUS)[number];
+
+export const OUTBOX_STATUS = ['PENDING', 'PROCESSING', 'PROCESSED', 'FAILED'] as const;
+export type OutboxStatus = (typeof OUTBOX_STATUS)[number];
+
+/** The booking lifecycle events that fan out into notifications — a
+ * subset of docs/architecture/notifications.md's event list; the rest
+ * (VENUE_RESPONSE_REMINDER, BOOKING_REMINDER) need a separate reminder
+ * job, not yet built. */
+export const NOTIFICATION_EVENT_TYPE = [
+  'BOOKING_REQUESTED',
+  'BOOKING_CONFIRMED',
+  'BOOKING_REJECTED',
+  'BOOKING_EXPIRED',
+  'BOOKING_CANCELLED_BY_CUSTOMER',
+  'BOOKING_CANCELLED_BY_VENUE',
+  'BOOKING_COMPLETED',
+] as const;
+export type NotificationEventType = (typeof NOTIFICATION_EVENT_TYPE)[number];
+
+/** An outbox row that's failed this many times is left FAILED for good,
+ * not retried forever — see docs/architecture/notifications.md. */
+export const OUTBOX_MAX_ATTEMPTS = 5;
+
 export const SUPPORTED_LOCALES = ['en', 'ar'] as const;
 export type SupportedLocale = (typeof SUPPORTED_LOCALES)[number];
 
