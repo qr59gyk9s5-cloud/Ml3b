@@ -7,9 +7,18 @@
 - **Environments:** LOCAL → STAGING/Preview (Vercel preview deploys +
   a separate Supabase project or branch) → PRODUCTION
 
-The founder has no existing Vercel/Supabase accounts yet — account creation
-and first deployment happen together when we reach Phase 12
-(Production Readiness), with step-by-step guidance at that time.
+The founder has no existing Vercel account yet — account creation and
+first deployment happen together when we reach Phase 12 (Production
+Readiness), with step-by-step guidance at that time.
+
+**Supabase, specifically**, was connected earlier than that, in Phase 6 —
+`src/lib/auth` (ADR-005) needs a real Auth provider to build sign-in UI
+against, not just the schema/RLS work Phases 2–5 already exercise against
+a plain local Postgres (ADR-010). This one project is dev-only for now:
+its `DATABASE_URL`/`NEXT_PUBLIC_SUPABASE_URL`/keys live in this
+environment's own `.env.local`, never committed. A separate
+STAGING/PRODUCTION Supabase project still gets created at Phase 12, not
+reused from this one.
 
 ## Rules
 
