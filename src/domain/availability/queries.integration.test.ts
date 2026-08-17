@@ -3,6 +3,7 @@ import { closeTestDatabase, resetTestDatabase } from '@/testing/db';
 import {
   createTestAvailabilityException,
   createTestAvailabilityRule,
+  createTestBooking,
   createTestFacility,
   createTestSport,
   createTestUser,
@@ -111,5 +112,49 @@ describe('getAvailableSlots (DB-backed)', () => {
 
     const slotsA = await getAvailableSlots(facilityA.id, '2026-08-16');
     expect(slotsA.every((s) => s.available)).toBe(true);
+  });
+
+  it('marks a slot BOOKED when a CONFIRMED booking covers it, and leaves other slots open', async () => {
+    const owner = await createTestUser('Owner');
+    const venue = await createTestVenue(owner.id, { status: 'ACTIVE' });
+    const sport = await createTestSport('rugby-avail');
+    const facility = await createTestFacility(venue.id, sport.id, { slotDurationMinutes: 60 });
+    await createTestAvailabilityRule(facility.id, {
+      dayOfWeek: 0,
+      startTime: '09:00',
+      endTime: '12:00',
+    });
+    await createTestBooking(venue.id, facility.id, {
+      status: 'CONFIRMED',
+      startAt: new Date('2026-08-16T07:00:00.000Z'), // 09:00 Cairo
+      endAt: new Date('2026-08-16T08:00:00.000Z'),
+    });
+
+    const slots = await getAvailableSlots(facility.id, '2026-08-16');
+
+    const booked = slots.find((s) => s.startAt.toISOString() === '2026-08-16T07:00:00.000Z');
+    expect(booked?.available).toBe(false);
+    expect(booked?.reason).toBe('BOOKED');
+    expect(slots.filter((s) => s.available)).toHaveLength(2);
+  });
+
+  it('does not block a slot for a REQUESTED (not yet CONFIRMED) booking', async () => {
+    const owner = await createTestUser('Owner');
+    const venue = await createTestVenue(owner.id, { status: 'ACTIVE' });
+    const sport = await createTestSport('cricket-avail');
+    const facility = await createTestFacility(venue.id, sport.id, { slotDurationMinutes: 60 });
+    await createTestAvailabilityRule(facility.id, {
+      dayOfWeek: 0,
+      startTime: '09:00',
+      endTime: '11:00',
+    });
+    await createTestBooking(venue.id, facility.id, {
+      status: 'REQUESTED',
+      startAt: new Date('2026-08-16T06:00:00.000Z'),
+      endAt: new Date('2026-08-16T07:00:00.000Z'),
+    });
+
+    const slots = await getAvailableSlots(facility.id, '2026-08-16');
+    expect(slots.every((s) => s.available)).toBe(true);
   });
 });

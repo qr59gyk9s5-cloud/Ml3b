@@ -1,17 +1,23 @@
 /**
  * The public, DB-backed entry point: "what can I book at this facility on
- * this date?" Thin by design — fetches rules/exceptions and hands them to
- * the pure computeAvailableSlots (see compute-slots.ts for the actual
- * algorithm).
+ * this date?" Thin by design — fetches rules/exceptions/CONFIRMED bookings
+ * and hands them to the pure computeAvailableSlots (see compute-slots.ts
+ * for the actual algorithm).
  *
- * blockedRanges is always [] for now: there's no bookings table yet
- * (Phase 5). The signature already accepts them so Phase 5 only has to
- * fetch CONFIRMED bookings and pass them in — no change to this function
- * or to compute-slots.ts.
+ * Only CONFIRMED bookings block a slot — a REQUESTED one does not (§13.3,
+ * overlapping pending requests are allowed; only confirmation is
+ * exclusive, enforced by the DB exclusion constraint in
+ * bookings_no_overlap — see docs/architecture/database.md#concurrency).
  */
 import { and, eq, gt, lt } from 'drizzle-orm';
 import { getDb } from '@/lib/db/client';
-import { availabilityExceptions, availabilityRules, facilities, venues } from '@/lib/db/schema';
+import {
+  availabilityExceptions,
+  availabilityRules,
+  bookings,
+  facilities,
+  venues,
+} from '@/lib/db/schema';
 import { computeAvailableSlots, type AvailabilitySlot } from './compute-slots';
 import { addLocalDays, startOfLocalDay, type LocalDate } from './time';
 
@@ -47,6 +53,18 @@ export async function getAvailableSlots(
       ),
     );
 
+  const confirmedBookings = await db
+    .select()
+    .from(bookings)
+    .where(
+      and(
+        eq(bookings.facilityId, facilityId),
+        eq(bookings.status, 'CONFIRMED'),
+        lt(bookings.startAt, windowEnd),
+        gt(bookings.endAt, windowStart),
+      ),
+    );
+
   return computeAvailableSlots({
     date,
     timeZone: venue.timezone,
@@ -62,6 +80,6 @@ export async function getAvailableSlots(
       endsAt: e.endsAt,
       isClosed: e.isClosed,
     })),
-    blockedRanges: [],
+    blockedRanges: confirmedBookings.map((b) => ({ startAt: b.startAt, endAt: b.endAt })),
   });
 }

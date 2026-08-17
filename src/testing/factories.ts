@@ -11,6 +11,7 @@ import { getRawTestClient, getTestDb } from './db';
 import {
   availabilityExceptions,
   availabilityRules,
+  bookings,
   facilities,
   profiles,
   sports,
@@ -18,12 +19,19 @@ import {
   venues,
   type AvailabilityException,
   type AvailabilityRule,
+  type Booking,
   type Facility,
   type Profile,
   type Sport,
   type Venue,
 } from '@/lib/db/schema';
-import type { AvailabilityExceptionKind, VenueRole, VenueStatus } from '@/lib/config/constants';
+import type {
+  AvailabilityExceptionKind,
+  BookingSource,
+  BookingStatus,
+  VenueRole,
+  VenueStatus,
+} from '@/lib/config/constants';
 
 export async function createTestUser(fullName: string, email?: string): Promise<Profile> {
   const sql = getRawTestClient();
@@ -138,4 +146,47 @@ export async function createTestAvailabilityException(
     })
     .returning();
   return exception;
+}
+
+/** Inserts a booking row directly (bypassing the domain services) for
+ * setting up test fixtures at an arbitrary status — the booking domain
+ * tests exercise transitionBooking()/createBookingRequest() themselves;
+ * this is just for getting a booking into a known starting state. */
+export async function createTestBooking(
+  venueId: string,
+  facilityId: string,
+  overrides: {
+    customerId?: string | null;
+    status?: BookingStatus;
+    source?: BookingSource;
+    startAt?: Date;
+    endAt?: Date;
+    expiresAt?: Date | null;
+    subtotalMinor?: number;
+    totalMinor?: number;
+    idempotencyKey?: string;
+  } = {},
+): Promise<Booking> {
+  const db = getTestDb();
+  const startAt = overrides.startAt ?? new Date('2026-08-16T06:00:00.000Z');
+  const endAt = overrides.endAt ?? new Date('2026-08-16T07:00:00.000Z');
+  const [booking] = await db
+    .insert(bookings)
+    .values({
+      reference: `BK-${randomUUID().slice(0, 6).toUpperCase()}`,
+      venueId,
+      facilityId,
+      customerId: overrides.customerId ?? null,
+      status: overrides.status ?? 'REQUESTED',
+      source: overrides.source ?? 'MARKETPLACE',
+      startAt,
+      endAt,
+      expiresAt: overrides.expiresAt,
+      subtotalMinor: overrides.subtotalMinor ?? 50000,
+      platformFeeMinor: 5000,
+      totalMinor: overrides.totalMinor ?? overrides.subtotalMinor ?? 50000,
+      idempotencyKey: overrides.idempotencyKey,
+    })
+    .returning();
+  return booking;
 }
