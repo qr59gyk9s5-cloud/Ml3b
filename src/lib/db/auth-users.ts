@@ -25,3 +25,14 @@ export async function getUserEmails(userIds: string[]): Promise<Map<string, stri
   );
   return new Map(rows.map((r) => [r.id, r.email]));
 }
+
+/** Admin user search (src/domain/admin/users.ts) — email is the only
+ * identifier the admin console realistically has to search by; there's
+ * no username. Case-insensitive exact match, not a fuzzy search. */
+export async function findUserIdByEmail(email: string): Promise<string | null> {
+  const db = getDb();
+  const rows = await db.execute<{ id: string }>(
+    sql`select id from auth.users where lower(email) = lower(${email}) limit 1`,
+  );
+  return rows[0]?.id ?? null;
+}

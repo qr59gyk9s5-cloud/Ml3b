@@ -13,6 +13,7 @@ import {
   availabilityRules,
   bookings,
   facilities,
+  platformAdmins,
   profiles,
   sports,
   venueMembers,
@@ -71,6 +72,28 @@ export async function addVenueMember(venueId: string, userId: string, role: Venu
   const db = getTestDb();
   const [member] = await db.insert(venueMembers).values({ venueId, userId, role }).returning();
   return member;
+}
+
+/** A real platform_admins grant — distinct from just passing
+ * `isPlatformAdmin: true` on an actor param (which most domain-service
+ * tests do, since the caller is trusted to have already resolved that
+ * from the session). Needed specifically where a domain service looks
+ * the *target* user up itself, e.g. suspendUser() refusing to suspend
+ * another admin. */
+export async function grantPlatformAdmin(userId: string, grantedBy?: string): Promise<void> {
+  const db = getTestDb();
+  await db.insert(platformAdmins).values({ userId, grantedBy: grantedBy ?? null });
+}
+
+/** Sets a user's suspension state directly, bypassing suspendUser() —
+ * for setting up "this actor is already suspended" fixtures without
+ * depending on the service under test elsewhere. */
+export async function suspendTestUser(userId: string, reason = 'Test suspension'): Promise<void> {
+  const db = getTestDb();
+  await db
+    .update(profiles)
+    .set({ suspendedAt: new Date(), suspendedReason: reason })
+    .where(eq(profiles.id, userId));
 }
 
 export async function createTestSport(code = `sport-${randomUUID()}`): Promise<Sport> {
