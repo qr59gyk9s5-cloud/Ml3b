@@ -19,6 +19,15 @@ version-controlled migrations in `supabase/migrations/`.
   `0004_availability_domain.sql` + `0005_availability_domain_rls.sql`.
   Availability is computed, not stored — see
   `docs/architecture/availability.md` for the algorithm.
+- **Phase 5** — `bookings`, `booking_events`: `0006_booking_domain.sql` +
+  `0007_booking_domain_constraints_and_rls.sql` (hand-written: the
+  `bookings_no_overlap` GiST exclusion constraint, RLS). The booking state
+  machine (`src/domain/booking/state-machine.ts`), the single
+  `transitionBooking()` write path (`src/domain/booking/transition.ts`),
+  request creation, manual (walk-in) bookings, and request expiry are real
+  domain services — see `docs/product/booking-flow.md`. `payments` is
+  still just this design document; payment authorize/capture is its own
+  dedicated phase (ADR-007).
 
 Every other table below is still just this design document until the
 phase that needs it implements it. Drizzle source lives in

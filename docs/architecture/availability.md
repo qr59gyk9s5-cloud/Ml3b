@@ -9,7 +9,7 @@ ADR, start there — this doc is the "how," that one is the "why."
 weekly rules (local wall-clock, per facility, possibly midnight-crossing)
   + special-hours exceptions (extra availability)
   − closure exceptions (maintenance, weather, holiday, tournament, ...)
-  − already-confirmed bookings (Phase 5 — not sourced yet, see below)
+  − already-confirmed bookings (Phase 5 — see below)
   = fixed-duration slots for one local calendar day,
     each flagged available or not, and why
 ```
@@ -71,14 +71,23 @@ Exceptions are create/delete only (no update) — changing a closure is a
 new record, not an edit to the old one, so "who declared this and when"
 stays honest in the audit trail.
 
-## What's still missing (Phase 5)
+## Confirmed bookings (Phase 5)
 
-`getAvailableSlots` always passes `blockedRanges: []` to
-`computeAvailableSlots` — there's no `bookings` table yet. The function
-signature already accepts `blockedRanges`, so Phase 5 only has to fetch
-`CONFIRMED` bookings overlapping the day and pass them in; nothing here
-changes. A slot with an overlapping blocked range comes back with
-`reason: 'BOOKED'`, already distinguished from `'CLOSED_PERIOD'`.
+`getAvailableSlots` fetches `CONFIRMED` bookings overlapping the query
+window and passes them in as `blockedRanges` — exactly the extension
+point this module was built for; `compute-slots.ts` itself never changed.
+A slot with an overlapping blocked range comes back with
+`reason: 'BOOKED'`, distinguished from `'CLOSED_PERIOD'`.
+
+Deliberately, only `CONFIRMED` bookings block a slot — a `REQUESTED` one
+does not (§13.3 of the founder spec: overlapping pending requests are
+allowed; only confirmation is exclusive). What actually prevents two
+`CONFIRMED` bookings from overlapping is not this read path — it's the
+`bookings_no_overlap` database exclusion constraint
+(`docs/architecture/database.md#concurrency`). This module answers "what
+should I show as available," which is a courtesy for the UI; the
+booking engine (`src/domain/booking/transition.ts`) is what actually
+enforces the guarantee at write time, race conditions included.
 
 ## Authorization
 

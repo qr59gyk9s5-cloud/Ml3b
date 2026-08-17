@@ -1,5 +1,13 @@
 # Booking Flow
 
+**Implementation status (Phase 5):** the state machine, request creation,
+confirm/reject/cancel/complete/no-show, manual (walk-in) bookings, and
+request expiry are real, tested domain services in `src/domain/booking/`
+— see `docs/architecture/booking-engine.md` for how. Payment
+authorize/capture (the "Payment authorized" / "payment captured" steps
+below) is documented here as the target flow but not yet implemented —
+its own dedicated phase, ADR-007.
+
 ## Request-to-book (the MVP default for every facility)
 
 ```
