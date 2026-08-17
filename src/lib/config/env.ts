@@ -35,6 +35,13 @@ const envSchema = z.object({
   //     until both are set. See docs/architecture/notifications.md.
   RESEND_API_KEY: z.string().min(1).optional(),
   RESEND_FROM_EMAIL: z.string().email().optional(),
+
+  // --- Payments (Phase 10, ADR-007) — no merchant agreement signed yet.
+  //     Both optional; src/lib/payments falls back to a no-op (never
+  //     throws, never blocks a booking) until both are set. See
+  //     docs/architecture/payments.md.
+  FAWRY_MERCHANT_CODE: z.string().min(1).optional(),
+  FAWRY_SECURITY_KEY: z.string().min(1).optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;
