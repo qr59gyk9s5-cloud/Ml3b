@@ -35,6 +35,11 @@ import type {
 import { findBookingTransitionRule } from './state-machine';
 import { resolveBookingAuthzContext, type BookingActor } from './authz-context';
 import { enqueueBookingEvent } from '@/domain/notifications/outbox';
+import {
+  captureBookingPayment,
+  refundBookingCancellationPayment,
+  releaseBookingPayment,
+} from '@/domain/payments/service';
 
 const EVENT_TYPE_BY_TARGET: Record<BookingStatus, string> = {
   REQUESTED: 'BOOKING_REQUESTED',
@@ -170,10 +175,9 @@ export async function transitionBooking(params: TransitionBookingParams): Promis
     actorType: actorTypeFor(params.actor, ctx.venueRole),
     actorId: params.actor.userId,
     reason: params.reason ?? null,
-    // Informational only — no money actually moves here. Real capture/
-    // refund execution is its own dedicated phase (ADR-007); this just
-    // records what policy *would* apply, for the future payments service
-    // to act on and for auditability in the meantime.
+    // Informational only — no money actually moves here directly; the
+    // payment side effect below records what actually happened (or, when
+    // no provider is configured yet, that nothing did).
     metadata: isCustomerCancellingConfirmed ? { refundRateApplied: CANCELLATION_REFUND_RATE } : {},
   });
 
@@ -184,6 +188,18 @@ export async function transitionBooking(params: TransitionBookingParams): Promis
   const eventType = EVENT_TYPE_BY_TARGET[params.targetStatus];
   if ((NOTIFICATION_EVENT_TYPE as readonly string[]).includes(eventType)) {
     await enqueueBookingEvent(eventType as NotificationEventType, booking.id);
+  }
+
+  // Best-effort — never throws, never blocks the transition. See
+  // src/domain/payments/service.ts's doc comment (ADR-007: capture on
+  // confirm, release on reject/expire, partial refund on a customer
+  // cancelling a confirmed booking).
+  if (params.targetStatus === 'CONFIRMED') {
+    await captureBookingPayment(updated);
+  } else if (params.targetStatus === 'REJECTED' || params.targetStatus === 'EXPIRED') {
+    await releaseBookingPayment(updated);
+  } else if (isCustomerCancellingConfirmed) {
+    await refundBookingCancellationPayment(updated);
   }
 
   return updated;

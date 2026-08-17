@@ -5,8 +5,10 @@
  * constraint, does that). See docs/product/booking-flow.md.
  *
  * Payment authorization (the "hold placed, not yet charged" step in the
- * flow diagram) is not implemented here — payments are their own
- * dedicated phase (ADR-007). This service creates the booking row only.
+ * flow diagram, ADR-007) happens right after the booking row is created —
+ * best-effort, never blocks booking creation. See
+ * src/domain/payments/service.ts's doc comment for why, and
+ * docs/architecture/payments.md for what's real vs. stubbed.
  */
 import { and, eq } from 'drizzle-orm';
 import { getDb } from '@/lib/db/client';
@@ -24,6 +26,7 @@ import {
 } from '@/lib/validation/booking';
 import type { BookingActor } from './authz-context';
 import { enqueueBookingEvent } from '@/domain/notifications/outbox';
+import { authorizePaymentForBooking } from '@/domain/payments/service';
 
 const MAX_REFERENCE_ATTEMPTS = 5;
 
@@ -173,6 +176,10 @@ export async function createBookingRequest(
       // Best-effort — never throws, never blocks the booking. See
       // src/domain/notifications/outbox.ts's doc comment.
       await enqueueBookingEvent('BOOKING_REQUESTED', booking.id);
+
+      // Best-effort — never throws, never blocks the booking. See
+      // src/domain/payments/service.ts's doc comment.
+      await authorizePaymentForBooking(booking);
 
       return booking;
     } catch (err) {
