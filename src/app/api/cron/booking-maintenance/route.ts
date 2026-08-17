@@ -1,11 +1,13 @@
 /**
- * The one scheduled entry point for both booking-maintenance jobs
+ * The one scheduled entry point for booking maintenance
  * (docs/architecture/background-jobs.md): expiring stale REQUESTED
- * bookings and completing past CONFIRMED ones. Combined into a single
- * route on one cadence (every few minutes, see vercel.json) rather than
- * the doc's separate "hourly" for completion — running it more often
- * than the minimum is strictly safe, and it's one less cron entry/secret
- * check to keep in sync.
+ * bookings, completing past CONFIRMED ones, and dispatching whatever
+ * notifications those (and every other) transition enqueued. Combined
+ * into a single route on one cadence rather than the docs' separate
+ * per-job cadences — running any of them more often than their stated
+ * minimum is strictly safe, and it's one less cron entry/secret check to
+ * keep in sync. Dispatch runs *after* expire/complete so this same
+ * invocation also delivers whatever they just enqueued, not next run.
  *
  * Never a public route: Vercel Cron sends `Authorization: Bearer
  * <CRON_SECRET>` automatically when CRON_SECRET is set on the project
@@ -17,6 +19,7 @@ import { NextResponse } from 'next/server';
 import { env } from '@/lib/config/env';
 import { expireOverdueBookingRequests } from '@/domain/booking/expire';
 import { completePastBookings } from '@/domain/booking/complete';
+import { dispatchOutboxEvents } from '@/domain/notifications/dispatch';
 
 export async function GET(request: Request) {
   if (!env.CRON_SECRET) {
@@ -32,9 +35,12 @@ export async function GET(request: Request) {
     expireOverdueBookingRequests(),
     completePastBookings(),
   ]);
+  const dispatched = await dispatchOutboxEvents();
 
   return NextResponse.json({
     expiredCount: expired.expiredCount,
     completedCount: completed.completedCount,
+    notificationsProcessed: dispatched.processed,
+    notificationsFailed: dispatched.failed,
   });
 }

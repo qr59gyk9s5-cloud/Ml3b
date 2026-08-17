@@ -23,6 +23,7 @@ import {
   type CreateBookingRequestInput,
 } from '@/lib/validation/booking';
 import type { BookingActor } from './authz-context';
+import { enqueueBookingEvent } from '@/domain/notifications/outbox';
 
 const MAX_REFERENCE_ATTEMPTS = 5;
 
@@ -168,6 +169,10 @@ export async function createBookingRequest(
         actorType: 'CUSTOMER',
         actorId: actor.userId,
       });
+
+      // Best-effort — never throws, never blocks the booking. See
+      // src/domain/notifications/outbox.ts's doc comment.
+      await enqueueBookingEvent('BOOKING_REQUESTED', booking.id);
 
       return booking;
     } catch (err) {

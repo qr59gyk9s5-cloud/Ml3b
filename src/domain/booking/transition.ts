@@ -22,10 +22,19 @@ import { getDb } from '@/lib/db/client';
 import { bookingEvents, bookings, type Booking } from '@/lib/db/schema';
 import { isExclusionViolation } from '@/lib/db/errors';
 import { DomainError } from '@/domain/errors';
-import { CANCELLATION_CUTOFF_HOURS, CANCELLATION_REFUND_RATE } from '@/lib/config/constants';
-import type { BookingStatus, VenueCancellationReason } from '@/lib/config/constants';
+import {
+  CANCELLATION_CUTOFF_HOURS,
+  CANCELLATION_REFUND_RATE,
+  NOTIFICATION_EVENT_TYPE,
+} from '@/lib/config/constants';
+import type {
+  BookingStatus,
+  NotificationEventType,
+  VenueCancellationReason,
+} from '@/lib/config/constants';
 import { findBookingTransitionRule } from './state-machine';
 import { resolveBookingAuthzContext, type BookingActor } from './authz-context';
+import { enqueueBookingEvent } from '@/domain/notifications/outbox';
 
 const EVENT_TYPE_BY_TARGET: Record<BookingStatus, string> = {
   REQUESTED: 'BOOKING_REQUESTED',
@@ -167,6 +176,15 @@ export async function transitionBooking(params: TransitionBookingParams): Promis
     // to act on and for auditability in the meantime.
     metadata: isCustomerCancellingConfirmed ? { refundRateApplied: CANCELLATION_REFUND_RATE } : {},
   });
+
+  // Best-effort — never throws, never blocks the transition. See
+  // src/domain/notifications/outbox.ts's doc comment. REQUESTED/NO_SHOW
+  // aren't in NOTIFICATION_EVENT_TYPE (REQUESTED is enqueued from
+  // create-request.ts instead, since it never reaches this function).
+  const eventType = EVENT_TYPE_BY_TARGET[params.targetStatus];
+  if ((NOTIFICATION_EVENT_TYPE as readonly string[]).includes(eventType)) {
+    await enqueueBookingEvent(eventType as NotificationEventType, booking.id);
+  }
 
   return updated;
 }
