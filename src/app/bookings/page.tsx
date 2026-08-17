@@ -12,6 +12,7 @@ import {
   VENUE_REASON_LABEL,
 } from '@/lib/format/booking-status';
 import { formatPriceMinor } from '@/lib/format/money';
+import { generateBookingQrDataUrl } from '@/lib/format/qr-code';
 import { cancelBookingAction } from './actions';
 
 export const metadata: Metadata = { title: 'My bookings — Sports Venue Marketplace' };
@@ -51,6 +52,14 @@ export default async function MyBookingsPage({ searchParams }: Props) {
 
   const cutoffMs = CANCELLATION_CUTOFF_HOURS * 60 * 60 * 1000;
   const currentTime = now();
+
+  const qrCodesByBookingId = new Map(
+    await Promise.all(
+      myBookings
+        .filter((b) => b.status === 'CONFIRMED')
+        .map(async (b) => [b.id, await generateBookingQrDataUrl(b.reference)] as const),
+    ),
+  );
 
   return (
     <main className="mx-auto max-w-2xl px-4 py-6 sm:px-6">
@@ -134,6 +143,23 @@ export default async function MyBookingsPage({ searchParams }: Props) {
                     {formatPriceMinor(booking.totalMinor, booking.currency)}
                   </span>
                 </div>
+
+                {booking.status === 'CONFIRMED' && qrCodesByBookingId.has(booking.id) ? (
+                  <div className="mt-3 flex items-center gap-3 rounded-xl bg-surface-2 p-3">
+                    {/* eslint-disable-next-line @next/next/no-img-element -- a
+                        generated data: URI, not an optimizable remote image */}
+                    <img
+                      src={qrCodesByBookingId.get(booking.id)}
+                      alt={`Check-in QR code for booking ${booking.reference}`}
+                      width={64}
+                      height={64}
+                      className="flex-none rounded-lg bg-white p-1"
+                    />
+                    <p className="text-xs text-muted">
+                      Show this at check-in — venue staff scan it to verify your reservation.
+                    </p>
+                  </div>
+                ) : null}
 
                 {booking.status === 'CANCELLED_BY_VENUE' && booking.cancellationReason ? (
                   <p className="mt-2 text-xs text-danger">

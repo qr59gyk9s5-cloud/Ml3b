@@ -4,6 +4,40 @@ Event-driven, reliable-delivery, provider-abstracted. A booking transaction
 must never fail — or silently lose a notification — because an email
 provider is temporarily down.
 
+**Implementation status (Phase 9):** real, with two honest gaps from the
+design below.
+
+1. **Not the same DB transaction.** The flow diagram shows the outbox
+   row written in the same transaction as the domain event. In practice,
+   `src/domain/notifications/outbox.ts`'s `enqueueBookingEvent()` runs as
+   a separate statement immediately after the booking write, wrapped so
+   it can never throw (a booking transition must not fail because
+   notification plumbing did — CLAUDE.md's priority order puts booking
+   correctness above notification delivery). The real, narrow risk this
+   accepts: a crash in the split second between the two statements loses
+   that one notification, never the booking itself.
+2. **No RESEND_API_KEY set yet.** `src/lib/notifications` falls back to
+   `ConsoleNotificationProvider` (logs instead of sending) until a real
+   Resend account is connected — same honest-degradation pattern as
+   Supabase/Vercel elsewhere in this project. `dispatchOutboxEvents()`,
+   the `notifications` table, and the IN_APP channel are all fully real
+   regardless.
+
+Everything else matches the design: `src/domain/booking/transition.ts`
+and `create-request.ts` enqueue on every lifecycle event in
+`NOTIFICATION_EVENT_TYPE`; `dispatchOutboxEvents()`
+(`src/domain/notifications/dispatch.ts`), invoked from
+`src/app/api/cron/booking-maintenance/route.ts`, claims PENDING rows,
+resolves recipients (venue staff for `BOOKING_REQUESTED`/
+`BOOKING_CANCELLED_BY_CUSTOMER`, the customer for everything else), and
+writes one `notifications` row per (recipient, channel). A per-recipient
+EMAIL failure is tracked on that row (`status='FAILED'`) without
+retrying the whole outbox event — retrying would re-insert a duplicate
+IN_APP row for recipients who already got theirs. Outbox-level retry
+(`attempts`/`last_error`, capped at `OUTBOX_MAX_ATTEMPTS`) is reserved
+for structural failures (the booking an event refers to can't be found),
+where nothing was written yet and a retry is safe.
+
 ## Flow
 
 ```
