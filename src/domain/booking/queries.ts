@@ -6,9 +6,9 @@
  * direct access; getDb() itself does not go through it — see
  * docs/architecture/authorization.md).
  */
-import { and, desc, eq } from 'drizzle-orm';
+import { and, desc, eq, getTableColumns } from 'drizzle-orm';
 import { getDb } from '@/lib/db/client';
-import { bookings, type Booking } from '@/lib/db/schema';
+import { bookings, facilities, venues, type Booking } from '@/lib/db/schema';
 import type { BookingStatus } from '@/lib/config/constants';
 import { DomainError } from '@/domain/errors';
 import { isBookingOwner, isVenueStaffForBooking } from '@/domain/authz/booking';
@@ -41,6 +41,39 @@ export async function listBookingsForCustomer(
   return db
     .select()
     .from(bookings)
+    .where(eq(bookings.customerId, customerId))
+    .orderBy(desc(bookings.startAt));
+}
+
+export interface BookingWithVenueDetails extends Booking {
+  venueName: string;
+  venueSlug: string;
+  venueTimezone: string;
+  facilityName: string;
+}
+
+/** Same as listBookingsForCustomer, joined with venue/facility names —
+ * for a customer-facing list where "REQUESTED at 09:00" alone isn't
+ * useful without knowing which facility. */
+export async function listBookingsForCustomerWithDetails(
+  customerId: string,
+  actor: BookingActor,
+): Promise<BookingWithVenueDetails[]> {
+  if (actor.userId !== customerId && !actor.isPlatformAdmin) {
+    throw new DomainError('FORBIDDEN', 'You do not have permission to view these bookings.');
+  }
+  const db = getDb();
+  return db
+    .select({
+      ...getTableColumns(bookings),
+      venueName: venues.name,
+      venueSlug: venues.slug,
+      venueTimezone: venues.timezone,
+      facilityName: facilities.name,
+    })
+    .from(bookings)
+    .innerJoin(venues, eq(bookings.venueId, venues.id))
+    .innerJoin(facilities, eq(bookings.facilityId, facilities.id))
     .where(eq(bookings.customerId, customerId))
     .orderBy(desc(bookings.startAt));
 }
