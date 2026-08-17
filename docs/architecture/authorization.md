@@ -72,3 +72,10 @@ Admins may transition a booking outside the normal state machine only in
 exceptional situations, and only with a mandatory reason, written to both
 `booking_events` (with `actor_type=ADMIN`) and `audit_logs`. No silent or
 reason-less admin edits.
+
+**Implementation status (Phase 11): real.** See
+`docs/architecture/admin-console.md` for the full picture — the six
+admin-only override edges in `src/domain/booking/state-machine.ts`, venue
+moderation (built on the Phase 3 lifecycle service), user suspension
+(distinct from a ban, which is still forbidden without explicit human
+approval per CLAUDE.md), and the `audit_logs` table + RLS.

@@ -31,6 +31,11 @@ version-controlled migrations in `supabase/migrations/`.
   domain wiring into the booking engine are real; the Fawry provider
   itself is an honest stub pending a signed merchant agreement — see
   `docs/architecture/payments.md` and ADR-007.
+- **Phase 11** — `audit_logs`, plus `profiles.suspended_*`:
+  `0012_admin_domain.sql` + `0013_admin_domain_rls.sql`. Admin venue
+  moderation, booking override, and user suspension are real domain
+  services with real RLS (including a column-level `REVOKE`/`GRANT` gap
+  fix worth reading) — see `docs/architecture/admin-console.md`.
 
 Every other table below is still just this design document until the
 phase that needs it implements it. Drizzle source lives in
