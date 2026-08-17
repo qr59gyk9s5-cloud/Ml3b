@@ -12,14 +12,56 @@
  * Venue/facility *mutations* and the lifecycle transition rules live in
  * lifecycle.ts and facilities.ts, not here — this file is reads only.
  */
-import { and, asc, eq } from 'drizzle-orm';
+import { and, asc, eq, getTableColumns } from 'drizzle-orm';
 import { getDb } from '@/lib/db/client';
-import { facilities, venues, type Facility, type Venue } from '@/lib/db/schema';
+import { facilities, sports, venues, type Facility, type Venue } from '@/lib/db/schema';
 
 /** Venues visible to an anonymous visitor: only ever ACTIVE ones. */
 export async function listActiveVenues(): Promise<Venue[]> {
   const db = getDb();
   return db.select().from(venues).where(eq(venues.status, 'ACTIVE')).orderBy(venues.name);
+}
+
+export interface VenueSummary {
+  venue: Venue;
+  /** Distinct sport codes across the venue's active facilities — for a
+   * card's sport icons, not exhaustive detail. */
+  sportCodes: string[];
+  facilityCount: number;
+  /** Cheapest active facility's hourly rate, for a "from X EGP/hr" tag.
+   * null if the venue has no active facilities yet. */
+  minPriceMinor: number | null;
+  currency: string | null;
+}
+
+/** Venue list plus just enough facility summary for a browse-page card.
+ * One query per venue is fine at MVP scale (same N+1-is-fine-for-now
+ * reasoning as the venue detail page's per-facility availability calls);
+ * revisit with a single aggregated query if the venue count grows. */
+export async function listActiveVenuesWithSummary(): Promise<VenueSummary[]> {
+  const venueList = await listActiveVenues();
+  const db = getDb();
+  return Promise.all(
+    venueList.map(async (venue) => {
+      const rows = await db
+        .select({
+          basePriceMinor: facilities.basePriceMinor,
+          currency: facilities.currency,
+          sportCode: sports.code,
+        })
+        .from(facilities)
+        .innerJoin(sports, eq(facilities.sportId, sports.id))
+        .where(and(eq(facilities.venueId, venue.id), eq(facilities.isActive, true)));
+
+      return {
+        venue,
+        sportCodes: Array.from(new Set(rows.map((r) => r.sportCode))),
+        facilityCount: rows.length,
+        minPriceMinor: rows.length > 0 ? Math.min(...rows.map((r) => r.basePriceMinor)) : null,
+        currency: rows[0]?.currency ?? null,
+      };
+    }),
+  );
 }
 
 /** A single venue's public page — null if it doesn't exist or isn't
@@ -34,15 +76,50 @@ export async function getPublicVenueBySlug(slug: string): Promise<Venue | null> 
   return venue ?? null;
 }
 
+export interface FacilityWithSport extends Facility {
+  sportCode: string;
+  sportDisplayName: string;
+}
+
+/** A single active facility, scoped to its venue — for the booking page,
+ * which needs one facility rather than the whole list. */
+export async function getActiveFacilityById(
+  facilityId: string,
+  venueId: string,
+): Promise<FacilityWithSport | null> {
+  const db = getDb();
+  const [row] = await db
+    .select({
+      ...getTableColumns(facilities),
+      sportCode: sports.code,
+      sportDisplayName: sports.displayName,
+    })
+    .from(facilities)
+    .innerJoin(sports, eq(facilities.sportId, sports.id))
+    .where(
+      and(
+        eq(facilities.id, facilityId),
+        eq(facilities.venueId, venueId),
+        eq(facilities.isActive, true),
+      ),
+    );
+  return row ?? null;
+}
+
 /** Active facilities at a venue, for the public facility list. Does not
  * check the venue's own status — callers already have a venue in hand
  * (typically from getPublicVenueBySlug, which already filtered to
  * ACTIVE) and shouldn't need a second round trip to re-check it. */
-export async function listActiveFacilities(venueId: string): Promise<Facility[]> {
+export async function listActiveFacilities(venueId: string): Promise<FacilityWithSport[]> {
   const db = getDb();
   return db
-    .select()
+    .select({
+      ...getTableColumns(facilities),
+      sportCode: sports.code,
+      sportDisplayName: sports.displayName,
+    })
     .from(facilities)
+    .innerJoin(sports, eq(facilities.sportId, sports.id))
     .where(and(eq(facilities.venueId, venueId), eq(facilities.isActive, true)))
     .orderBy(asc(facilities.name));
 }

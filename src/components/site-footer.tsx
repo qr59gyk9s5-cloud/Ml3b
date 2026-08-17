@@ -1,8 +1,16 @@
 export function SiteFooter() {
   return (
-    <footer className="border-t border-line py-6">
-      <div className="mx-auto max-w-5xl px-4 text-xs text-faint sm:px-6">
-        Sports Venue Marketplace is under active development — booking isn&apos;t live yet.
+    <footer className="border-t border-line py-8">
+      <div className="mx-auto flex max-w-5xl flex-col gap-2 px-4 sm:px-6">
+        <div className="flex items-center gap-2">
+          <span aria-hidden className="text-sm">
+            🏟️
+          </span>
+          <span className="text-xs font-bold text-foreground">Sports Venue Marketplace</span>
+        </div>
+        <p className="text-xs text-faint">
+          Cairo, Egypt — pitches and courts, request-to-book, confirmed by the venue.
+        </p>
       </div>
     </footer>
   );
