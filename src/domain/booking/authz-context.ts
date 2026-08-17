@@ -9,6 +9,7 @@ import { and, eq } from 'drizzle-orm';
 import { getDb } from '@/lib/db/client';
 import { venueMembers, type Booking } from '@/lib/db/schema';
 import type { BookingAuthzContext } from '@/domain/authz/booking';
+import { isUserSuspended } from '@/domain/admin/suspension';
 
 export interface BookingActor {
   /** null for an unauthenticated caller or a pure system job. */
@@ -26,13 +27,21 @@ export async function resolveBookingAuthzContext(
   const isOwningCustomer = actor.userId !== null && actor.userId === booking.customerId;
 
   let venueRole: BookingAuthzContext['venueRole'] = null;
+  let isSuspended = false;
   if (actor.userId) {
     const db = getDb();
-    const [membership] = await db
-      .select()
-      .from(venueMembers)
-      .where(and(eq(venueMembers.venueId, booking.venueId), eq(venueMembers.userId, actor.userId)));
+    const [membership, suspended] = await Promise.all([
+      db
+        .select()
+        .from(venueMembers)
+        .where(
+          and(eq(venueMembers.venueId, booking.venueId), eq(venueMembers.userId, actor.userId)),
+        )
+        .then((rows) => rows[0]),
+      isUserSuspended(actor.userId),
+    ]);
     venueRole = membership?.role ?? null;
+    isSuspended = suspended;
   }
 
   return {
@@ -40,5 +49,6 @@ export async function resolveBookingAuthzContext(
     venueRole,
     isPlatformAdmin: actor.isPlatformAdmin,
     isSystem: actor.isSystem ?? false,
+    isSuspended,
   };
 }

@@ -14,6 +14,10 @@ export interface BookingAuthzContext {
   isPlatformAdmin: boolean;
   /** True only for background-job/system-initiated calls (e.g. expiry). */
   isSystem: boolean;
+  /** A suspended non-admin account cannot write anything — checked as a
+   * blanket precondition by transitionBooking, not baked into the
+   * per-edge `allow` functions below. See src/domain/admin/suspension.ts. */
+  isSuspended: boolean;
 }
 
 export function isBookingOwner(ctx: BookingAuthzContext): boolean {

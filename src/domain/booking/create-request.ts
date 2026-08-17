@@ -26,6 +26,7 @@ import {
 } from '@/lib/validation/booking';
 import type { BookingActor } from './authz-context';
 import { enqueueBookingEvent } from '@/domain/notifications/outbox';
+import { isUserSuspended } from '@/domain/admin/suspension';
 import { authorizePaymentForBooking } from '@/domain/payments/service';
 
 const MAX_REFERENCE_ATTEMPTS = 5;
@@ -67,6 +68,10 @@ export async function createBookingRequest(
 ): Promise<Booking> {
   if (!actor.userId) {
     throw new DomainError('FORBIDDEN', 'Sign in to request a booking.');
+  }
+
+  if (!actor.isPlatformAdmin && (await isUserSuspended(actor.userId))) {
+    throw new DomainError('FORBIDDEN', 'Your account has been suspended.');
   }
 
   const parsed = createBookingRequestSchema.safeParse(rawInput);

@@ -23,6 +23,7 @@ import { bookingEvents, bookings, type Booking } from '@/lib/db/schema';
 import { isExclusionViolation } from '@/lib/db/errors';
 import { DomainError } from '@/domain/errors';
 import {
+  BOOKING_REQUEST_EXPIRY_MINUTES,
   CANCELLATION_CUTOFF_HOURS,
   CANCELLATION_REFUND_RATE,
   NOTIFICATION_EVENT_TYPE,
@@ -32,7 +33,7 @@ import type {
   NotificationEventType,
   VenueCancellationReason,
 } from '@/lib/config/constants';
-import { findBookingTransitionRule } from './state-machine';
+import { findBookingTransitionRule, isTerminalBookingStatus } from './state-machine';
 import { resolveBookingAuthzContext, type BookingActor } from './authz-context';
 import { enqueueBookingEvent } from '@/domain/notifications/outbox';
 import {
@@ -40,6 +41,7 @@ import {
   refundBookingCancellationPayment,
   releaseBookingPayment,
 } from '@/domain/payments/service';
+import { recordAuditLog } from '@/domain/audit/log';
 
 const EVENT_TYPE_BY_TARGET: Record<BookingStatus, string> = {
   REQUESTED: 'BOOKING_REQUESTED',
@@ -73,6 +75,15 @@ export interface TransitionBookingParams {
   actor: BookingActor;
   /** Required for REJECTED and CANCELLED_BY_VENUE — a fixed reason, never free text. */
   reason?: VenueCancellationReason;
+  /** Required for an admin override (see state-machine.ts's override
+   * edges) — reopening a terminal booking or correcting a mis-marked
+   * completion/no-show doesn't fit the fixed VENUE_CANCELLATION_REASON
+   * vocabulary, so this is deliberately free text. Never written to
+   * bookings.cancellation_reason (that column keeps its fixed
+   * vocabulary) — recorded on booking_events.metadata and audit_logs
+   * instead, per "no silent or reason-less admin edits"
+   * (docs/architecture/authorization.md). */
+  overrideReason?: string;
 }
 
 export async function transitionBooking(params: TransitionBookingParams): Promise<Booking> {
@@ -84,6 +95,14 @@ export async function transitionBooking(params: TransitionBookingParams): Promis
   }
 
   const ctx = await resolveBookingAuthzContext(booking, params.actor);
+
+  // A suspended account can't write anything, admin override included —
+  // an admin who is themself suspended is a contradiction suspendUser()
+  // already prevents (src/domain/admin/users.ts), but this stays a
+  // blanket check, not folded into individual `allow` functions.
+  if (ctx.isSuspended && !ctx.isPlatformAdmin) {
+    throw new DomainError('FORBIDDEN', 'Your account has been suspended.');
+  }
 
   const rule = findBookingTransitionRule(booking.status, params.targetStatus);
   if (!rule) {
@@ -110,6 +129,19 @@ export async function transitionBooking(params: TransitionBookingParams): Promis
     throw new DomainError('VALIDATION_FAILED', 'A reason is required.');
   }
 
+  // An admin override is specifically "transitioning out of what was a
+  // terminal status" — a normal admin action (e.g. admin confirming a
+  // REQUESTED booking as venue staff would) never hits this, since
+  // REQUESTED/CONFIRMED aren't terminal. See state-machine.ts's override
+  // edges, all gated to isPlatformAdminCtx.
+  const isAdminOverride = params.actor.isPlatformAdmin && isTerminalBookingStatus(booking.status);
+  if (isAdminOverride && !params.overrideReason?.trim()) {
+    throw new DomainError(
+      'VALIDATION_FAILED',
+      'A reason is required to override a booking out of this state.',
+    );
+  }
+
   // Layer 3: an explicit pre-check, so an obviously-taken slot fails with a
   // clear message before we even attempt the write. Not the guarantee —
   // see the module doc comment.
@@ -132,9 +164,19 @@ export async function transitionBooking(params: TransitionBookingParams): Promis
   }
 
   const now = new Date();
-  const respondedAt =
-    booking.respondedAt ??
-    (params.targetStatus === 'CONFIRMED' || params.targetStatus === 'REJECTED' ? now : null);
+  // Reopening to REQUESTED (admin override only — see state-machine.ts)
+  // needs a fresh response window and a cleared respondedAt, or the
+  // expiry cron (src/domain/booking/expire.ts) would immediately
+  // re-expire it: it just filters status='REQUESTED' and expires_at in
+  // the past, which the old expiry timestamp still would be.
+  const isReopeningToRequested = params.targetStatus === 'REQUESTED';
+  const respondedAt = isReopeningToRequested
+    ? null
+    : (booking.respondedAt ??
+      (params.targetStatus === 'CONFIRMED' || params.targetStatus === 'REJECTED' ? now : null));
+  const expiresAt = isReopeningToRequested
+    ? new Date(now.getTime() + BOOKING_REQUEST_EXPIRY_MINUTES * 60_000)
+    : booking.expiresAt;
 
   let updated: Booking | undefined;
   try {
@@ -144,6 +186,7 @@ export async function transitionBooking(params: TransitionBookingParams): Promis
         status: params.targetStatus,
         cancellationReason: params.reason ?? booking.cancellationReason,
         respondedAt,
+        expiresAt,
         updatedAt: now,
       })
       // Optimistic concurrency: only apply if the row is still in the state we read it in.
@@ -178,8 +221,33 @@ export async function transitionBooking(params: TransitionBookingParams): Promis
     // Informational only — no money actually moves here directly; the
     // payment side effect below records what actually happened (or, when
     // no provider is configured yet, that nothing did).
-    metadata: isCustomerCancellingConfirmed ? { refundRateApplied: CANCELLATION_REFUND_RATE } : {},
+    metadata: isCustomerCancellingConfirmed
+      ? { refundRateApplied: CANCELLATION_REFUND_RATE }
+      : isAdminOverride
+        ? {
+            adminOverride: true,
+            previousStatus: booking.status,
+            overrideReason: params.overrideReason,
+          }
+        : {},
   });
+
+  // No silent or reason-less admin edits (docs/architecture/authorization.md).
+  // Not best-effort — see recordAuditLog's doc comment.
+  if (isAdminOverride) {
+    await recordAuditLog({
+      actorType: 'ADMIN',
+      actorId: params.actor.userId,
+      action: 'BOOKING_OVERRIDE',
+      resourceType: 'booking',
+      resourceId: booking.id,
+      metadata: {
+        from: booking.status,
+        to: params.targetStatus,
+        reason: params.overrideReason,
+      },
+    });
+  }
 
   // Best-effort — never throws, never blocks the transition. See
   // src/domain/notifications/outbox.ts's doc comment. REQUESTED/NO_SHOW

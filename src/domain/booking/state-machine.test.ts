@@ -13,6 +13,7 @@ function ctx(overrides: Partial<BookingAuthzContext> = {}): BookingAuthzContext 
     venueRole: null,
     isPlatformAdmin: false,
     isSystem: false,
+    isSuspended: false,
     ...overrides,
   };
 }
@@ -25,7 +26,7 @@ const admin = ctx({ isPlatformAdmin: true });
 const stranger = ctx();
 
 describe('booking state machine', () => {
-  it('every terminal status has no outgoing transitions', () => {
+  it('every terminal status has no outgoing transitions for a non-admin actor', () => {
     const terminal: BookingStatus[] = [
       'REJECTED',
       'EXPIRED',
@@ -37,7 +38,14 @@ describe('booking state machine', () => {
     for (const from of terminal) {
       expect(isTerminalBookingStatus(from)).toBe(true);
       for (const to of BOOKING_STATUS) {
-        expect(findBookingTransitionRule(from, to)).toBeUndefined();
+        // A rule may exist (the admin override edges below), but never
+        // one any non-admin actor — owner, receptionist, customer,
+        // system — can use.
+        expect(canTransitionBooking(owner, from, to)).toBe(false);
+        expect(canTransitionBooking(receptionist, from, to)).toBe(false);
+        expect(canTransitionBooking(customer, from, to)).toBe(false);
+        expect(canTransitionBooking(system, from, to)).toBe(false);
+        expect(canTransitionBooking(stranger, from, to)).toBe(false);
       }
     }
   });
@@ -113,5 +121,34 @@ describe('booking state machine', () => {
   it('rejects a transition with no rule at all (e.g. REQUESTED straight to COMPLETED)', () => {
     expect(findBookingTransitionRule('REQUESTED', 'COMPLETED')).toBeUndefined();
     expect(canTransitionBooking(admin, 'REQUESTED', 'COMPLETED')).toBe(false);
+  });
+
+  describe('admin override edges (Phase 11)', () => {
+    it('an admin may reopen EXPIRED, REJECTED, or either cancellation back to REQUESTED', () => {
+      for (const from of [
+        'EXPIRED',
+        'REJECTED',
+        'CANCELLED_BY_CUSTOMER',
+        'CANCELLED_BY_VENUE',
+      ] as const) {
+        expect(canTransitionBooking(admin, from, 'REQUESTED')).toBe(true);
+      }
+    });
+
+    it('an admin may correct a mis-marked completion/no-show either direction', () => {
+      expect(canTransitionBooking(admin, 'NO_SHOW', 'COMPLETED')).toBe(true);
+      expect(canTransitionBooking(admin, 'COMPLETED', 'NO_SHOW')).toBe(true);
+    });
+
+    it('no non-admin actor — including venue staff and the system — gets an override edge', () => {
+      expect(canTransitionBooking(owner, 'EXPIRED', 'REQUESTED')).toBe(false);
+      expect(canTransitionBooking(receptionist, 'REJECTED', 'REQUESTED')).toBe(false);
+      expect(canTransitionBooking(system, 'CANCELLED_BY_CUSTOMER', 'REQUESTED')).toBe(false);
+      expect(canTransitionBooking(customer, 'CANCELLED_BY_VENUE', 'REQUESTED')).toBe(false);
+    });
+
+    it('CONFIRMED still has no override edge — only genuinely terminal statuses do', () => {
+      expect(findBookingTransitionRule('CONFIRMED', 'REQUESTED')).toBeUndefined();
+    });
   });
 });

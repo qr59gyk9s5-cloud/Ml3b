@@ -13,6 +13,7 @@ function ctx(overrides: Partial<BookingAuthzContext> = {}): BookingAuthzContext 
     venueRole: null,
     isPlatformAdmin: false,
     isSystem: false,
+    isSuspended: false,
     ...overrides,
   };
 }

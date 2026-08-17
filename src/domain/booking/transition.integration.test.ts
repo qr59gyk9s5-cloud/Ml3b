@@ -7,9 +7,12 @@ import {
   createTestSport,
   createTestUser,
   createTestVenue,
+  suspendTestUser,
 } from '@/testing/factories';
-import { bookingEvents, bookings } from '@/lib/db/schema';
+import { auditLogs, bookingEvents, bookings } from '@/lib/db/schema';
 import { transitionBooking } from './transition';
+
+const adminActorFor = (userId: string) => ({ userId, isPlatformAdmin: true });
 
 const actorFor = (userId: string) => ({ userId, isPlatformAdmin: false });
 
@@ -276,5 +279,147 @@ describe('transitionBooking (DB-backed)', () => {
     const confirmedCount = confirmedRows.filter((b) => b.status === 'CONFIRMED').length;
     expect(confirmedCount).toBe(1);
     expect(confirmedRows.find((b) => b.status === 'CONFIRMED')?.id).toBe(fulfilled[0].value.id);
+  });
+
+  describe('admin override (Phase 11)', () => {
+    it('an admin may reopen an EXPIRED booking to REQUESTED with a reason, resetting expiresAt', async () => {
+      const { venue, facility } = await setUpVenueAndFacility();
+      const admin = await createTestUser('Admin');
+      const customer = await createTestUser('Customer');
+      const booking = await createTestBooking(venue.id, facility.id, {
+        customerId: customer.id,
+        status: 'EXPIRED',
+        startAt: FAR_FUTURE_START,
+        endAt: FAR_FUTURE_END,
+        expiresAt: new Date(Date.now() - 60_000), // already in the past
+      });
+
+      const updated = await transitionBooking({
+        bookingId: booking.id,
+        targetStatus: 'REQUESTED',
+        actor: adminActorFor(admin.id),
+        overrideReason: 'Expired due to a bug — reopening for the venue to respond.',
+      });
+
+      expect(updated.status).toBe('REQUESTED');
+      expect(updated.expiresAt).not.toBeNull();
+      expect(updated.expiresAt!.getTime()).toBeGreaterThan(Date.now());
+      expect(updated.respondedAt).toBeNull();
+    });
+
+    it('refuses an admin override with no reason', async () => {
+      const { venue, facility } = await setUpVenueAndFacility();
+      const admin = await createTestUser('Admin');
+      const booking = await createTestBooking(venue.id, facility.id, { status: 'REJECTED' });
+
+      await expect(
+        transitionBooking({
+          bookingId: booking.id,
+          targetStatus: 'REQUESTED',
+          actor: adminActorFor(admin.id),
+        }),
+      ).rejects.toMatchObject({ code: 'VALIDATION_FAILED' });
+    });
+
+    it('refuses a non-admin actor the same override edge', async () => {
+      const { owner, venue, facility } = await setUpVenueAndFacility();
+      const booking = await createTestBooking(venue.id, facility.id, { status: 'REJECTED' });
+
+      await expect(
+        transitionBooking({
+          bookingId: booking.id,
+          targetStatus: 'REQUESTED',
+          actor: actorFor(owner.id),
+          overrideReason: 'Trying anyway',
+        }),
+      ).rejects.toMatchObject({ code: 'FORBIDDEN' });
+    });
+
+    it('writes an audit_logs row for the override, distinct from booking_events', async () => {
+      const { venue, facility } = await setUpVenueAndFacility();
+      const admin = await createTestUser('Admin');
+      const booking = await createTestBooking(venue.id, facility.id, { status: 'NO_SHOW' });
+
+      await transitionBooking({
+        bookingId: booking.id,
+        targetStatus: 'COMPLETED',
+        actor: adminActorFor(admin.id),
+        overrideReason: 'Customer confirmed they did attend.',
+      });
+
+      const db = getTestDb();
+      const [log] = await db.select().from(auditLogs).where(eq(auditLogs.resourceId, booking.id));
+      expect(log).toBeDefined();
+      expect(log.action).toBe('BOOKING_OVERRIDE');
+      expect(log.actorType).toBe('ADMIN');
+      expect(log.actorId).toBe(admin.id);
+      expect((log.metadata as { from: string; to: string }).from).toBe('NO_SHOW');
+      expect((log.metadata as { from: string; to: string }).to).toBe('COMPLETED');
+
+      const events = await db
+        .select()
+        .from(bookingEvents)
+        .where(eq(bookingEvents.bookingId, booking.id));
+      expect(events).toHaveLength(1);
+      expect(events[0].eventType).toBe('BOOKING_COMPLETED');
+    });
+
+    it('a normal admin-as-venue-staff action (not an override) does not write to audit_logs', async () => {
+      const { venue, facility } = await setUpVenueAndFacility();
+      const admin = await createTestUser('Admin');
+      const customer = await createTestUser('Customer');
+      const booking = await createTestBooking(venue.id, facility.id, {
+        customerId: customer.id,
+        status: 'REQUESTED',
+        startAt: FAR_FUTURE_START,
+        endAt: FAR_FUTURE_END,
+      });
+
+      await transitionBooking({
+        bookingId: booking.id,
+        targetStatus: 'CONFIRMED',
+        actor: adminActorFor(admin.id),
+      });
+
+      const db = getTestDb();
+      const logs = await db.select().from(auditLogs).where(eq(auditLogs.resourceId, booking.id));
+      expect(logs).toHaveLength(0);
+    });
+  });
+
+  describe('suspended accounts', () => {
+    it('blocks a suspended customer from cancelling their own booking', async () => {
+      const { venue, facility } = await setUpVenueAndFacility();
+      const customer = await createTestUser('Customer');
+      await suspendTestUser(customer.id);
+      const booking = await createTestBooking(venue.id, facility.id, {
+        customerId: customer.id,
+        status: 'REQUESTED',
+        startAt: FAR_FUTURE_START,
+        endAt: FAR_FUTURE_END,
+      });
+
+      await expect(
+        transitionBooking({
+          bookingId: booking.id,
+          targetStatus: 'CANCELLED_BY_CUSTOMER',
+          actor: actorFor(customer.id),
+        }),
+      ).rejects.toMatchObject({ code: 'FORBIDDEN' });
+    });
+
+    it('blocks a suspended venue owner from confirming a request', async () => {
+      const { owner, venue, facility } = await setUpVenueAndFacility();
+      await suspendTestUser(owner.id);
+      const booking = await createTestBooking(venue.id, facility.id, { status: 'REQUESTED' });
+
+      await expect(
+        transitionBooking({
+          bookingId: booking.id,
+          targetStatus: 'CONFIRMED',
+          actor: actorFor(owner.id),
+        }),
+      ).rejects.toMatchObject({ code: 'FORBIDDEN' });
+    });
   });
 });

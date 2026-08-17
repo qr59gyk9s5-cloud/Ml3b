@@ -14,13 +14,19 @@
  *                              |--cancel(venue)--> CANCELLED_BY_VENUE
  *
  * REJECTED, EXPIRED, CANCELLED_BY_CUSTOMER, CANCELLED_BY_VENUE, COMPLETED,
- * NO_SHOW are all terminal — nothing transitions out of them. No admin
- * override/correction path exists yet (deliberately deferred, same as
- * ARCHIVED for venues — see CLAUDE.md on scope discipline).
+ * NO_SHOW are all terminal for every normal actor — nothing transitions
+ * out of them except the ADMIN OVERRIDE edges below (Phase 11,
+ * docs/architecture/authorization.md's "Admin override, specifically").
+ * Those exist for exceptional correction only (a wrongly-expired
+ * request, a mis-marked no-show) — transition.ts requires a reason and
+ * writes to audit_logs whenever one of these fires, on top of the usual
+ * booking_events row. ARCHIVED for venues has no equivalent override —
+ * still deliberately deferred, see CLAUDE.md on scope discipline.
  */
 import type { BookingStatus } from '@/lib/config/constants';
 import {
   isBookingOwner,
+  isPlatformAdminCtx,
   isSystemActor,
   isVenueStaffForBooking,
   type BookingAuthzContext,
@@ -45,6 +51,16 @@ const TRANSITIONS: BookingTransitionRule[] = [
     allow: (ctx) => isVenueStaffForBooking(ctx) || isSystemActor(ctx),
   },
   { from: 'CONFIRMED', to: 'NO_SHOW', allow: isVenueStaffForBooking },
+
+  // --- Admin override edges (Phase 11) — reopening a wrongly-terminaled
+  // booking, or correcting a mis-marked completion/no-show. Reason
+  // required and audit-logged, enforced by transition.ts, not here.
+  { from: 'EXPIRED', to: 'REQUESTED', allow: isPlatformAdminCtx },
+  { from: 'REJECTED', to: 'REQUESTED', allow: isPlatformAdminCtx },
+  { from: 'CANCELLED_BY_CUSTOMER', to: 'REQUESTED', allow: isPlatformAdminCtx },
+  { from: 'CANCELLED_BY_VENUE', to: 'REQUESTED', allow: isPlatformAdminCtx },
+  { from: 'NO_SHOW', to: 'COMPLETED', allow: isPlatformAdminCtx },
+  { from: 'COMPLETED', to: 'NO_SHOW', allow: isPlatformAdminCtx },
 ];
 
 export function findBookingTransitionRule(

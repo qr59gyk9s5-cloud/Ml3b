@@ -7,6 +7,7 @@ import {
   createTestSport,
   createTestUser,
   createTestVenue,
+  suspendTestUser,
 } from '@/testing/factories';
 import { createBookingRequest } from './create-request';
 
@@ -199,5 +200,22 @@ describe('createBookingRequest (DB-backed)', () => {
     );
 
     expect(second.id).toBe(first.id);
+  });
+
+  it('refuses a suspended customer', async () => {
+    const { facility } = await setUpBookableFacility();
+    const customer = await createTestUser('Customer');
+    await suspendTestUser(customer.id);
+
+    await expect(
+      createBookingRequest(
+        { userId: customer.id, isPlatformAdmin: false },
+        {
+          facilityId: facility.id,
+          startAt: new Date('2026-08-16T09:00:00.000Z'),
+          durationMinutes: 60,
+        },
+      ),
+    ).rejects.toMatchObject({ code: 'FORBIDDEN' });
   });
 });
