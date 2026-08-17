@@ -4,36 +4,22 @@ import type { Metadata } from 'next';
 import { ChevronLeft, MapPin } from 'lucide-react';
 import { getActiveFacilityById, getPublicVenueBySlug } from '@/domain/venue/queries';
 import { getAvailableSlots } from '@/domain/availability/queries';
-import { addLocalDays, todayInTimeZone, type LocalDate } from '@/domain/availability/time';
+import { addLocalDays, todayInTimeZone } from '@/domain/availability/time';
 import { formatPriceMinor } from '@/lib/format/money';
 import { getSessionActor } from '@/lib/auth/session';
 import { SportIcon } from '@/components/sport-icon';
+import {
+  computeDurationOptions,
+  computeValidStartIndexes,
+  formatDateLabel,
+  formatSlotTime,
+} from '@/lib/booking/slot-picker';
 import { requestBookingAction } from './actions';
 
 type Props = {
   params: Promise<{ slug: string; facilityId: string }>;
   searchParams: Promise<{ date?: string; duration?: string; error?: string }>;
 };
-
-function formatSlotTime(date: Date, timeZone: string): string {
-  return new Intl.DateTimeFormat('en-GB', {
-    hour: 'numeric',
-    minute: '2-digit',
-    hour12: true,
-    timeZone,
-  }).format(date);
-}
-
-/** date is a plain 'YYYY-MM-DD' local calendar date — parsed at noon UTC
- * purely so Intl picks the right weekday, never as a real instant. */
-function formatDateLabel(date: LocalDate): string {
-  const [y, m, d] = date.split('-').map(Number);
-  return new Intl.DateTimeFormat('en-GB', {
-    weekday: 'short',
-    day: 'numeric',
-    month: 'short',
-  }).format(new Date(Date.UTC(y, m - 1, d, 12)));
-}
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug, facilityId } = await params;
@@ -55,14 +41,7 @@ export default async function BookFacilityPage({ params, searchParams }: Props) 
   const today = todayInTimeZone(venue.timezone);
   const date = sp.date && /^\d{4}-\d{2}-\d{2}$/.test(sp.date) ? sp.date : today;
 
-  const durationOptions: number[] = [];
-  for (
-    let d = facility.minimumDurationMinutes;
-    d <= facility.maximumDurationMinutes;
-    d += facility.slotDurationMinutes
-  ) {
-    durationOptions.push(d);
-  }
+  const durationOptions = computeDurationOptions(facility);
   const requestedDuration = sp.duration ? Number(sp.duration) : durationOptions[0];
   const duration = durationOptions.includes(requestedDuration)
     ? requestedDuration
@@ -70,15 +49,7 @@ export default async function BookFacilityPage({ params, searchParams }: Props) 
   const slotsNeeded = duration / facility.slotDurationMinutes;
 
   const slots = await getAvailableSlots(facility.id, date);
-  const validStartIndexes = slots
-    .map((_, i) => i)
-    .filter((i) => {
-      if (i + slotsNeeded > slots.length) return false;
-      for (let k = 0; k < slotsNeeded; k++) {
-        if (!slots[i + k].available) return false;
-      }
-      return true;
-    });
+  const validStartIndexes = computeValidStartIndexes(slots, slotsNeeded);
 
   const actor = await getSessionActor();
   const dayLinks = Array.from({ length: 7 }, (_, i) => addLocalDays(today, i));
