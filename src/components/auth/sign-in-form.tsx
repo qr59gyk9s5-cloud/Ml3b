@@ -19,11 +19,12 @@ function SubmitButton() {
   );
 }
 
-export function SignInForm() {
+export function SignInForm({ next }: { next?: string }) {
   const [state, formAction] = useActionState(signInWithPasswordAction, initialState);
 
   return (
     <form action={formAction} className="flex flex-col gap-3">
+      {next ? <input type="hidden" name="next" value={next} /> : null}
       <label className="flex flex-col gap-1 text-sm">
         <span className="font-medium text-foreground">Email</span>
         <input

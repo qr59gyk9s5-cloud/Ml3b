@@ -6,7 +6,12 @@ import { isSupabaseConfigured } from '@/lib/auth/server';
 
 export const metadata: Metadata = { title: 'Sign in — Sports Venue Marketplace' };
 
-export default function SignInPage() {
+type Props = {
+  searchParams: Promise<{ next?: string }>;
+};
+
+export default async function SignInPage({ searchParams }: Props) {
+  const { next } = await searchParams;
   const configured = isSupabaseConfigured();
 
   return (
@@ -29,7 +34,7 @@ export default function SignInPage() {
             or
             <span className="h-px flex-1 bg-line" />
           </div>
-          <SignInForm />
+          <SignInForm next={next} />
         </>
       )}
 

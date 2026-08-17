@@ -28,6 +28,14 @@ const signUpSchema = credentialsSchema.extend({
   fullName: z.string().trim().min(1, 'Enter your name.').max(120),
 });
 
+/** Only ever redirect somewhere inside this app — an unvalidated
+ * `?next=` would otherwise be an open-redirect vector (e.g. `//evil.com`,
+ * parsed by browsers as protocol-relative). */
+function safeNextPath(raw: FormDataEntryValue | null): string {
+  const value = typeof raw === 'string' ? raw : '';
+  return value.startsWith('/') && !value.startsWith('//') ? value : '/';
+}
+
 export async function signInWithPasswordAction(
   _prev: AuthActionState,
   formData: FormData,
@@ -46,7 +54,7 @@ export async function signInWithPasswordAction(
   const { error } = await supabase.auth.signInWithPassword(parsed.data);
   if (error) return { error: error.message };
 
-  redirect('/');
+  redirect(safeNextPath(formData.get('next')));
 }
 
 export async function signUpWithPasswordAction(
