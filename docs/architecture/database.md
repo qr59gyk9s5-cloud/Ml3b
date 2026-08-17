@@ -25,9 +25,12 @@ version-controlled migrations in `supabase/migrations/`.
   machine (`src/domain/booking/state-machine.ts`), the single
   `transitionBooking()` write path (`src/domain/booking/transition.ts`),
   request creation, manual (walk-in) bookings, and request expiry are real
-  domain services — see `docs/product/booking-flow.md`. `payments` is
-  still just this design document; payment authorize/capture is its own
-  dedicated phase (ADR-007).
+  domain services — see `docs/product/booking-flow.md`.
+- **Phase 10** — `payments`: `0010_payments_domain.sql` +
+  `0011_payments_rls.sql`. Schema, `PaymentProvider` interface, RLS, and
+  domain wiring into the booking engine are real; the Fawry provider
+  itself is an honest stub pending a signed merchant agreement — see
+  `docs/architecture/payments.md` and ADR-007.
 
 Every other table below is still just this design document until the
 phase that needs it implements it. Drizzle source lives in
@@ -237,7 +240,7 @@ EXCLUDE USING gist (
 ```
 id                    uuid PK DEFAULT gen_random_uuid()
 booking_id            uuid NOT NULL REFERENCES bookings(id)
-provider              text NOT NULL         -- 'paymob' | 'fawry' (TBD, see ADR-007)
+provider              text NOT NULL         -- 'fawry' (ADR-007's founder decision)
 provider_ref          text NULL             -- provider transaction id, for reconciliation
 status                payment_status NOT NULL DEFAULT 'AUTHORIZED'
 amount_minor          int NOT NULL
@@ -252,11 +255,11 @@ updated_at            timestamptz NOT NULL DEFAULT now()
 INDEX (booking_id)
 ```
 
-Built out when the payment gateway integration lands (see ADR-007) — not a
-Phase 1/2 migration. Documented now because it changes the booking
-transition side effects (`CONFIRMED` → capture, `REJECTED`/`EXPIRED` →
-release, cancellation → 50% refund) that the booking domain service must
-call out to.
+Built in Phase 10 (see ADR-007, `docs/architecture/payments.md`). The
+booking transition side effects this table exists for (`CONFIRMED` →
+capture, `REJECTED`/`EXPIRED` → release, cancellation → 50% refund) are
+wired into `src/domain/booking/transition.ts`; the real Fawry provider
+call underneath them is still a stub.
 
 ### `booking_events`
 

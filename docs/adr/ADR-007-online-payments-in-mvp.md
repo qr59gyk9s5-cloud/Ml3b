@@ -35,9 +35,12 @@ flow:
    before the venue's payout is recorded — replacing manual commission
    tracking.
 
-Provider (Paymob vs. Fawry, or both) is not yet selected — decided when
-this phase is actually implemented, informed by Egyptian market
-integration maturity and fee structure at that time.
+Provider: **Fawry**, chosen by the founder when Phase 10 was implemented
+(2026-08-17), over Paymob. `src/lib/payments` is built provider-agnostic
+(`PaymentProvider` interface) so a second provider — or a switch — never
+touches `src/domain/payments` or the booking transition service. The real
+Fawry integration is an intentional stub pending a signed merchant
+agreement and sandbox credentials — see `docs/architecture/payments.md`.
 
 ## Alternatives considered
 
