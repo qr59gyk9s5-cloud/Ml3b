@@ -28,8 +28,27 @@ const envSchema = z.object({
 
 export type Env = z.infer<typeof envSchema>;
 
+/**
+ * NEXT_PUBLIC_APP_URL is used to build absolute redirect URLs (OAuth,
+ * email-confirmation links — see src/app/(auth)/actions.ts). On Vercel,
+ * infer it instead of requiring it to be hand-set and kept in sync on
+ * every deploy: VERCEL_BRANCH_URL is a *stable* domain for a given
+ * branch's Preview deployments (unlike VERCEL_URL, which is unique per
+ * deployment and changes on every push). An explicit NEXT_PUBLIC_APP_URL
+ * always wins, for a real custom domain in production.
+ */
+function inferAppUrl(): string | undefined {
+  if (process.env.NEXT_PUBLIC_APP_URL) return process.env.NEXT_PUBLIC_APP_URL;
+  if (process.env.VERCEL_BRANCH_URL) return `https://${process.env.VERCEL_BRANCH_URL}`;
+  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
+  return undefined;
+}
+
 function loadEnv(): Env {
-  const parsed = envSchema.safeParse(process.env);
+  const parsed = envSchema.safeParse({
+    ...process.env,
+    NEXT_PUBLIC_APP_URL: inferAppUrl(),
+  });
 
   if (!parsed.success) {
     console.error('❌ Invalid environment configuration:', parsed.error.flatten().fieldErrors);
