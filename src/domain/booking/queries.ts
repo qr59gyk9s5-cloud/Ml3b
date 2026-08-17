@@ -98,3 +98,29 @@ export async function listBookingsForVenue(
     .where(and(...conditions))
     .orderBy(desc(bookings.startAt));
 }
+
+export interface BookingWithFacilityName extends Booking {
+  facilityName: string;
+}
+
+/** Same as listBookingsForVenue, joined with the facility name — the
+ * staff dashboard needs "Football Pitch 1" on screen, not a bare UUID. */
+export async function listBookingsForVenueWithDetails(
+  venueId: string,
+  actor: BookingActor,
+  filters: { status?: BookingStatus } = {},
+): Promise<BookingWithFacilityName[]> {
+  const ctx = await resolveBookingAuthzContext({ venueId, customerId: null }, actor);
+  if (!isVenueStaffForBooking(ctx)) {
+    throw new DomainError('FORBIDDEN', 'You do not have permission to view these bookings.');
+  }
+  const db = getDb();
+  const conditions = [eq(bookings.venueId, venueId)];
+  if (filters.status) conditions.push(eq(bookings.status, filters.status));
+  return db
+    .select({ ...getTableColumns(bookings), facilityName: facilities.name })
+    .from(bookings)
+    .innerJoin(facilities, eq(bookings.facilityId, facilities.id))
+    .where(and(...conditions))
+    .orderBy(desc(bookings.startAt));
+}
