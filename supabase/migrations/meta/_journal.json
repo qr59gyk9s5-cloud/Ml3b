@@ -64,6 +64,27 @@
       "when": 1786961842683,
       "tag": "0008_warm_banshee",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1786969880000,
+      "tag": "0009_notifications_rls",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1786969881384,
+      "tag": "0010_payments_domain",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1786969882000,
+      "tag": "0011_payments_rls",
+      "breakpoints": true
     }
   ]
 }

@@ -1,10 +1,6 @@
 /**
  * Postgres enum definitions, mirroring the values in
  * src/lib/config/constants.ts and documented in docs/architecture/database.md.
- *
- * Only the enums this phase's tables actually use live here. Payment-related
- * enums are added in the migration that introduces the payments table
- * (its own dedicated phase — see ADR-007), not speculatively now.
  */
 import { pgEnum } from 'drizzle-orm/pg-core';
 import {
@@ -13,6 +9,7 @@ import {
   BOOKING_MODE,
   BOOKING_SOURCE,
   BOOKING_STATUS,
+  PAYMENT_STATUS,
   VENUE_CANCELLATION_REASON,
   VENUE_ROLE,
   VENUE_STATUS,
@@ -26,3 +23,4 @@ export const bookingStatusEnum = pgEnum('booking_status', [...BOOKING_STATUS]);
 export const bookingSourceEnum = pgEnum('booking_source', [...BOOKING_SOURCE]);
 export const actorTypeEnum = pgEnum('actor_type', [...ACTOR_TYPE]);
 export const cancellationReasonEnum = pgEnum('cancellation_reason', [...VENUE_CANCELLATION_REASON]);
+export const paymentStatusEnum = pgEnum('payment_status', [...PAYMENT_STATUS]);

@@ -114,6 +114,23 @@ export type NotificationEventType = (typeof NOTIFICATION_EVENT_TYPE)[number];
  * not retried forever — see docs/architecture/notifications.md. */
 export const OUTBOX_MAX_ATTEMPTS = 5;
 
+/** ADR-007 / docs/architecture/database.md's payments table. */
+export const PAYMENT_STATUS = [
+  'AUTHORIZED',
+  'CAPTURED',
+  'RELEASED',
+  'REFUNDED',
+  'PARTIALLY_REFUNDED',
+  'FAILED',
+] as const;
+export type PaymentStatus = (typeof PAYMENT_STATUS)[number];
+
+/** Provider selected per ADR-007's founder decision — Fawry. Kept as a
+ * union (not hardcoded 'fawry' everywhere) so a second provider can be
+ * added without touching every call site. */
+export const PAYMENT_PROVIDER = ['fawry'] as const;
+export type PaymentProviderName = (typeof PAYMENT_PROVIDER)[number];
+
 export const SUPPORTED_LOCALES = ['en', 'ar'] as const;
 export type SupportedLocale = (typeof SUPPORTED_LOCALES)[number];
 
