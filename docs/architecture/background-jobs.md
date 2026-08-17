@@ -6,6 +6,22 @@ as **Vercel Cron → authenticated internal route handlers**, calling the
 exact same domain services as interactive requests — no parallel business
 logic to keep in sync.
 
+**Implementation status (Phase 8):** the expiry and completion jobs are
+real — `src/domain/booking/expire.ts` and `complete.ts`, both invoked
+from the one route handler
+`src/app/api/cron/booking-maintenance/route.ts`, scheduled in
+`vercel.json`. The notification-outbox and review-request jobs land with
+Phase 9 (notifications), once there's an outbox to process.
+
+`vercel.json`'s schedule is currently `0 3 * * *` (once daily,
+03:00 UTC) — **not** the "every few minutes" cadence the table below
+describes as the target. Vercel's Hobby plan restricts cron jobs to at
+most once per day; this project is on Hobby (see
+`docs/operations/deployment.md`). Once on a plan without that
+restriction, tighten the schedule to match the table — the route handler
+itself doesn't change, it's idempotent and safe to call as often as
+you like.
+
 ## MVP jobs
 
 | Job                               | Cadence           | Does                                                                                                  |

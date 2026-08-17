@@ -24,6 +24,11 @@ const envSchema = z.object({
   NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(1).optional(),
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(1).optional(),
   DATABASE_URL: z.string().min(1).optional(),
+
+  // --- Background jobs (Phase 8) — authenticates Vercel Cron's calls into
+  //     src/app/api/cron/*; see docs/architecture/background-jobs.md.
+  //     Optional so local tooling doesn't require a secret nothing calls yet.
+  CRON_SECRET: z.string().min(1).optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;
