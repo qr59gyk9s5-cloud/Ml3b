@@ -20,6 +20,9 @@ import { platformAdmins, sports, venueMembers, venues } from '../../src/lib/db/s
 import { createFacility } from '../../src/domain/venue/facilities';
 import { createAvailabilityRule } from '../../src/domain/availability/rules';
 import { createAvailabilityException } from '../../src/domain/availability/exceptions';
+import { createBookingRequest } from '../../src/domain/booking/create-request';
+import { transitionBooking } from '../../src/domain/booking/transition';
+import { createManualBooking } from '../../src/domain/booking/manual';
 import { closeDb } from '../../src/lib/db/client';
 
 const databaseUrl = process.env.DATABASE_URL;
@@ -180,7 +183,55 @@ async function main() {
       .values({ venueId: secondVenue.id, userId: secondOwnerId, role: 'OWNER' });
 
     console.log('Seeding a plain customer...');
-    await seedUser(sql, 'Ahmed Mostafa', 'ahmed@example.local', '+201009998888');
+    const customerId = await seedUser(sql, 'Ahmed Mostafa', 'ahmed@example.local', '+201009998888');
+    const customerActor = { userId: customerId, isPlatformAdmin: false };
+
+    console.log('Seeding bookings (via the real booking domain services)...');
+    const inThreeDays = new Date();
+    inThreeDays.setUTCDate(inThreeDays.getUTCDate() + 3);
+    inThreeDays.setUTCHours(16, 0, 0, 0); // 18:00 Cairo — well inside pitch2's 09:00-01:00 window
+
+    // A still-open request, demonstrating REQUESTED never blocks the slot for anyone else.
+    await createBookingRequest(customerActor, {
+      facilityId: pitch2.id,
+      startAt: inThreeDays,
+      durationMinutes: 60,
+      customerName: 'Ahmed Mostafa',
+      customerPhone: '+201009998888',
+    });
+
+    // A confirmed booking, going through the same transitionBooking() every
+    // confirm in the product goes through.
+    const inFourDays = new Date(inThreeDays);
+    inFourDays.setUTCDate(inFourDays.getUTCDate() + 1);
+    const confirmedRequest = await createBookingRequest(customerActor, {
+      facilityId: pitch2.id,
+      startAt: inFourDays,
+      durationMinutes: 60,
+      customerName: 'Ahmed Mostafa',
+      customerPhone: '+201009998888',
+    });
+    await transitionBooking({
+      bookingId: confirmedRequest.id,
+      targetStatus: 'CONFIRMED',
+      actor: ownerActor,
+    });
+
+    // A walk-in booking the receptionist takes over the counter — no
+    // marketplace account, source=MANUAL, straight to CONFIRMED.
+    const inFiveDays = new Date(inThreeDays);
+    inFiveDays.setUTCDate(inFiveDays.getUTCDate() + 2);
+    await createManualBooking(
+      venue.id,
+      { userId: receptionistId, isPlatformAdmin: false },
+      {
+        facilityId: padelCourt.id,
+        startAt: inFiveDays,
+        durationMinutes: 90,
+        customerName: 'Walk-in — Youssef Adly',
+        customerPhone: '+201005556666',
+      },
+    );
 
     console.log('Done.');
   } finally {
