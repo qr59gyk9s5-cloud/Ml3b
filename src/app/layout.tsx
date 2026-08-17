@@ -1,5 +1,7 @@
 import type { Metadata } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
+import { Analytics } from '@vercel/analytics/next';
+import { SpeedInsights } from '@vercel/speed-insights/next';
 import { SiteHeader } from '@/components/site-header';
 import { SiteFooter } from '@/components/site-footer';
 import { SuspendedBanner } from '@/components/suspended-banner';
@@ -28,6 +30,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <SuspendedBanner />
         <div className="flex-1">{children}</div>
         <SiteFooter />
+        {/* No-ops off Vercel (local dev, this sandbox) — real telemetry
+         * only once actually deployed there. See docs/operations/monitoring.md. */}
+        <Analytics />
+        <SpeedInsights />
       </body>
     </html>
   );
