@@ -20,7 +20,7 @@
 import { and, eq, gt, lt, ne } from 'drizzle-orm';
 import { getDb } from '@/lib/db/client';
 import { bookingEvents, bookings, type Booking } from '@/lib/db/schema';
-import { isExclusionViolation } from '@/lib/db/errors';
+import { isDeadlockDetected, isExclusionViolation } from '@/lib/db/errors';
 import { DomainError } from '@/domain/errors';
 import {
   BOOKING_REQUEST_EXPIRY_MINUTES,
@@ -193,10 +193,14 @@ export async function transitionBooking(params: TransitionBookingParams): Promis
       .where(and(eq(bookings.id, booking.id), eq(bookings.status, booking.status)))
       .returning();
   } catch (err) {
-    if (isExclusionViolation(err)) {
+    if (isExclusionViolation(err) || isDeadlockDetected(err)) {
       // Layer 4's real guarantee: two simultaneous CONFIRMED writes for
       // overlapping bookings on the same facility — whichever commits
-      // first wins, this is the loser.
+      // first wins, this is the loser. Under real contention Postgres
+      // sometimes reports that as a deadlock (40P01) rather than a
+      // clean exclusion violation (23P01) — see isDeadlockDetected's
+      // doc comment. Either way, nothing corrupted: exactly one
+      // transaction applied, this one didn't.
       throw new DomainError('CONFLICT', 'This slot was just confirmed for another booking.');
     }
     throw err;

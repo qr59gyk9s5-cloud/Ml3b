@@ -27,6 +27,20 @@ export function isExclusionViolation(err: unknown): boolean {
   return getPostgresErrorCode(err) === '23P01';
 }
 
+/** 40P01 — deadlock_detected. Two genuinely simultaneous writes racing
+ * to CONFIRM overlapping bookings can deadlock while Postgres checks the
+ * exclusion constraint (each waits on a lock the other holds), rather
+ * than one cleanly losing with 23P01 — confirmed by
+ * transition.integration.test.ts's concurrent-confirmation test
+ * reproducing it under real contention. Both outcomes mean the same
+ * thing to a caller: "someone else won this race, your write didn't
+ * happen" — never data corruption, since Postgres aborts one whole
+ * transaction rather than applying a partial write. Treated the same as
+ * an exclusion violation wherever transition.ts checks for one. */
+export function isDeadlockDetected(err: unknown): boolean {
+  return getPostgresErrorCode(err) === '40P01';
+}
+
 /** 23505 — unique_violation, optionally scoped to a specific constraint. */
 export function isUniqueViolation(err: unknown, constraintName?: string): boolean {
   const pgError = extractPgError(err);
