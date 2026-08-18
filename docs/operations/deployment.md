@@ -51,6 +51,54 @@ for every migration after that — it tracks what's applied in
 it stays a correct no-op if run from an environment that can reach the
 database (a normal dev machine, or CI).
 
+## Known build issue: `next build` crashes on `/_global-error` (Next.js 16)
+
+`next build` fails during static-page generation with:
+
+```
+Error occurred prerendering page "/_global-error".
+TypeError: Cannot read properties of null (reading 'useContext')
+```
+
+This is a confirmed, still-open upstream Next.js 16 bug — reproduces on
+a completely stock app with no custom `global-error.tsx` at all
+(vercel/next.js#86178, #84994, #95741, discussion #94667). Verified
+in this repo, not assumed:
+
+- Reproduces identically on a fresh `pnpm install` from the committed
+  lockfile (not a corrupted local `node_modules`).
+- Reproduces on both Next 16.3.0 and 16.3.1.
+- Reproduces with both Turbopack and `next build --webpack`.
+- `export const dynamic = 'force-dynamic'` on `global-error.tsx` (a
+  commonly-cited workaround) does **not** fix it here — tried and
+  confirmed ineffective, though it's still set (see that file) since
+  it's independently correct regardless.
+- `experimental.cpus: 1` (forcing single-worker generation) does not
+  fix it either — the community report that tried this found the crash
+  just relocates to `/_global-error` itself.
+
+**The one thing that does work:** `next build --debug-prerender`. This
+is a real Next.js flag, but the CLI itself warns "Not for production
+use!" — it disables minification and `prerenderEarlyExit`, and runs the
+prerender pass under development-mode semantics. It is a workaround to
+unblock seeing a working deploy now, not a permanent fix.
+
+**What this means for deploying right now:** until upstream ships a
+fix, getting an actual deployable build (Preview or Production) requires
+overriding Vercel's Build Command for this project (Vercel dashboard →
+Project → Settings → Build & Development Settings) to:
+
+```
+next build --debug-prerender
+```
+
+Revert this the moment a Next.js patch release fixes the underlying
+bug — check the linked issues periodically. This was a decision flagged
+to the founder rather than silently baked into `package.json`'s `build`
+script, since it trades away real production-build guarantees
+(minification, the normal optimized prerender path) for the sake of
+being deployable today.
+
 ## Production launch checklist (Phase 12)
 
 Everything below needs a real account/domain/payment method — none of

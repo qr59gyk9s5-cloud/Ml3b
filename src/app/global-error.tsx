@@ -12,7 +12,25 @@
  * `retry` (not `reset`) since v16.3.0 — it re-fetches and re-renders the
  * boundary's children instead of just clearing error state. See this
  * file's doc comment link, "Version History".
+ *
+ * `dynamic = 'force-dynamic'`: this route never needs to be static
+ * (global-error only ever renders live, in response to a real crash),
+ * so this is correct regardless. It does NOT work around the build
+ * crash below, though — verified by testing it in isolation.
+ *
+ * Known, still-open upstream bug (vercel/next.js#86178, #84994, #95741,
+ * discussion #94667): `next build` crashes with `Cannot read properties
+ * of null (reading 'useContext')` while prerendering the internal
+ * /_global-error page, reproduced with a completely stock global-error
+ * file — nothing app-specific triggers it. Every commonly-cited
+ * workaround was tried and confirmed NOT to fix it here: `dynamic =
+ * 'force-dynamic'` above, `next build --webpack`, `experimental.cpus: 1`
+ * to force single-worker generation. The one thing that does work is
+ * `next build --debug-prerender` — see docs/operations/deployment.md's
+ * "Known build issue" section for the current status and what building
+ * for a real deploy requires until upstream ships a fix.
  */
+export const dynamic = 'force-dynamic';
 export default function GlobalError({
   error,
   retry,
