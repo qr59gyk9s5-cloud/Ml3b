@@ -128,22 +128,45 @@ concrete list of what the founder does, once, outside this repo:
 5. Connect your real custom domain in Vercel's project settings (Domains
    tab) and update DNS at your registrar — Vercel's own docs walk
    through this per-registrar.
-6. Enable Vercel Analytics and Speed Insights for the project (Vercel
+6. **Turn on Google + Apple sign-in** — the app side is already fully
+   built (ADR-005: `src/components/auth/oauth-buttons.tsx`,
+   `signInWithOAuthAction` in `src/app/(auth)/actions.ts`, the PKCE
+   callback at `src/app/auth/callback/route.ts`; both buttons already
+   render on `/sign-in` and `/sign-up`). What's left is two external
+   registrations only the founder's identity can create — no amount of
+   backend access substitutes for this, it's not a config file:
+   - **Google**: in Google Cloud Console, create an OAuth 2.0 Client ID
+     (OAuth consent screen → Credentials → Create Credentials → OAuth
+     client ID → Web application). Authorized redirect URI is your
+     Supabase project's `https://<project-ref>.supabase.co/auth/v1/callback`.
+   - **Apple**: requires an active Apple Developer Program membership
+     (paid, tied to the founder's Apple ID/legal entity). Create a
+     Services ID with "Sign in with Apple" enabled, a Sign in with
+     Apple key, and register the same Supabase callback URL as a
+     verified return URL.
+   - Paste both providers' client ID + secret into the **production**
+     Supabase project's dashboard → Authentication → Providers →
+     Google / Apple, and toggle each on. Do this on the real production
+     project from step 1, not the dev project.
+   - This session currently has no Supabase or Vercel MCP connector
+     attached, so even with credentials in hand this step can't be
+     done from here — it's ~10 minutes by hand in both dashboards.
+7. Enable Vercel Analytics and Speed Insights for the project (Vercel
    dashboard → project → Analytics/Speed Insights tabs) — the
    `<Analytics />`/`<SpeedInsights />` components are already wired into
    `src/app/layout.tsx` and no-op until you do this. See
    `docs/operations/monitoring.md`.
-7. Confirm Vercel Cron is enabled for the project (Hobby plan: once
+8. Confirm Vercel Cron is enabled for the project (Hobby plan: once
    daily, matching `vercel.json`'s schedule; a paid plan allows the
    background-jobs doc's originally-intended cadence — see
    `docs/architecture/background-jobs.md`).
-8. Set up Supabase's own automated backups / point-in-time recovery for
+9. Set up Supabase's own automated backups / point-in-time recovery for
    the production project (Supabase dashboard → Database → Backups) —
    see `docs/operations/backup-recovery.md` for what to actually
    configure and how to verify it.
-9. Once real traffic exists, watch `/api/health`
-   (`src/app/api/health/route.ts`) and Vercel's Logs for the first
-   while — see `docs/operations/monitoring.md`.
+10. Once real traffic exists, watch `/api/health`
+    (`src/app/api/health/route.ts`) and Vercel's Logs for the first
+    while — see `docs/operations/monitoring.md`.
 
 ## Rollback procedure
 
