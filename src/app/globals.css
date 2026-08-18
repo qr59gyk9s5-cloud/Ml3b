@@ -29,6 +29,30 @@
   --danger: #b3392a;
   --danger-wash: #f8e4e0;
   --on-accent: #fbfffc;
+
+  /* "Alive" accent — the electric lime the founder's reference uses for
+   * every primary tap target (CTA buttons, the active nav pill, rating
+   * badges). Sits alongside the turf-green identity rather than
+   * replacing it: green is the brand's "place" color (venues, pitches,
+   * hero surfaces), lime is the "go" color (things you can tap right
+   * now). Dark ink text on lime, never white — lime is too light for
+   * white-on-lime contrast. */
+  --lime: #cdf24e;
+  --lime-strong: #a8d626;
+  --lime-wash: #f1fbd9;
+  --lime-ink: #223109;
+
+  /* A small warm/cool spectrum cycled across sport badges, area cards,
+   * and category tiles purely for visual variety and liveliness — never
+   * meaningful (a sport isn't "the coral one"), just a rotation so the
+   * grid doesn't read as one flat green wash. See src/components/
+   * sport-icon.tsx's sportTone() for the code → tone mapping. */
+  --spectrum-coral: #e8603c;
+  --spectrum-coral-wash: #fbe6df;
+  --spectrum-sky: #1c86c9;
+  --spectrum-sky-wash: #dcf0fb;
+  --spectrum-violet: #7a54c9;
+  --spectrum-violet-wash: #ece4fa;
 }
 
 @theme inline {
@@ -50,6 +74,16 @@
   --color-danger: var(--danger);
   --color-danger-wash: var(--danger-wash);
   --color-on-accent: var(--on-accent);
+  --color-lime: var(--lime);
+  --color-lime-strong: var(--lime-strong);
+  --color-lime-wash: var(--lime-wash);
+  --color-lime-ink: var(--lime-ink);
+  --color-spectrum-coral: var(--spectrum-coral);
+  --color-spectrum-coral-wash: var(--spectrum-coral-wash);
+  --color-spectrum-sky: var(--spectrum-sky);
+  --color-spectrum-sky-wash: var(--spectrum-sky-wash);
+  --color-spectrum-violet: var(--spectrum-violet);
+  --color-spectrum-violet-wash: var(--spectrum-violet-wash);
   --font-display: var(--font-manrope);
   --font-sans: var(--font-jakarta);
   --font-mono: var(--font-geist-mono);
@@ -82,6 +116,18 @@
     --danger: #e17b67;
     --danger-wash: #3a201880;
     --on-accent: #052e16;
+
+    --lime: #d8f56a;
+    --lime-strong: #e8ff8f;
+    --lime-wash: #263405b3;
+    --lime-ink: #16220a;
+
+    --spectrum-coral: #f0917a;
+    --spectrum-coral-wash: #3a1e1780;
+    --spectrum-sky: #6fc1ee;
+    --spectrum-sky-wash: #142a3880;
+    --spectrum-violet: #ab8ee8;
+    --spectrum-violet-wash: #241c3880;
   }
 }
 
@@ -239,6 +285,12 @@ body {
 }
 .pitch-thumb.tone-ink {
   background: linear-gradient(155deg, var(--foreground), #0d1a14);
+}
+.pitch-thumb.tone-sky {
+  background: linear-gradient(155deg, var(--spectrum-sky), #0f5a86);
+}
+.pitch-thumb.tone-lime {
+  background: linear-gradient(155deg, var(--lime-strong), #6b8c14);
 }
 
 /* Backwards-compat alias — legacy .venue-thumb usages get the new look

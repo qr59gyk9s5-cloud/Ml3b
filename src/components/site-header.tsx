@@ -85,7 +85,7 @@ export async function SiteHeader() {
               </Link>
               <Link
                 href="/sign-up"
-                className="btn-sheen focus-visible:outline-accent rounded-lg bg-gradient-to-br from-accent to-accent-strong px-3.5 py-1.5 font-display text-xs font-bold text-white shadow-accent transition-transform hover:-translate-y-0.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+                className="btn-sheen focus-visible:outline-accent rounded-lg bg-lime px-3.5 py-1.5 font-display text-xs font-bold text-lime-ink shadow-sm transition-transform hover:-translate-y-0.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
               >
                 Sign up
               </Link>

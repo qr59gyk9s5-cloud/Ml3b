@@ -5,6 +5,7 @@
  * for admins (RLS in 0009_notifications_rls.sql mirrors this, but
  * getDb() doesn't go through RLS — this check is the real one).
  */
+import { cache } from 'react';
 import { and, count, desc, eq, isNull } from 'drizzle-orm';
 import { getDb } from '@/lib/db/client';
 import { notifications, type Notification } from '@/lib/db/schema';
@@ -20,7 +21,9 @@ export async function listNotificationsForUser(userId: string): Promise<Notifica
     .limit(50);
 }
 
-export async function countUnreadNotifications(userId: string): Promise<number> {
+// cache(): layout.tsx (bottom tab bar) and site-header.tsx both call this
+// per request with the same userId — dedupe to one query instead of two.
+export const countUnreadNotifications = cache(async (userId: string): Promise<number> => {
   const db = getDb();
   const [row] = await db
     .select({ value: count() })
@@ -33,7 +36,7 @@ export async function countUnreadNotifications(userId: string): Promise<number> 
       ),
     );
   return row?.value ?? 0;
-}
+});
 
 export async function markNotificationRead(notificationId: string, userId: string): Promise<void> {
   const db = getDb();

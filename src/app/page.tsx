@@ -5,7 +5,7 @@ import {
   listAreaCategories,
   listSportCategories,
 } from '@/domain/venue/queries';
-import { SportIcon } from '@/components/sport-icon';
+import { SportIcon, sportTone } from '@/components/sport-icon';
 import { VenueGrid } from '@/components/venue-grid';
 import { LocateButton } from '@/components/locate-button';
 
@@ -52,6 +52,15 @@ export default async function Home({ searchParams }: Props) {
             animationDuration: '9s',
           }}
         />
+        <div
+          aria-hidden
+          className="animate-float pointer-events-none absolute -bottom-10 left-10 h-24 w-24 rounded-full opacity-30 blur-[2px]"
+          style={{
+            background: 'radial-gradient(circle at 32% 30%, var(--lime), var(--lime-strong))',
+            animationDelay: '1.4s',
+            animationDuration: '8s',
+          }}
+        />
         <div className="relative mx-auto max-w-5xl px-4 py-12 sm:px-6 sm:py-16">
           <p className="mb-2 flex items-center gap-1.5 font-display text-xs font-bold tracking-wide text-accent-strong uppercase">
             <MapPin className="h-3.5 w-3.5" aria-hidden />
@@ -94,6 +103,7 @@ export default async function Home({ searchParams }: Props) {
             <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
               {sportCategories.map((cat) => {
                 const active = sp.sport === cat.code;
+                const tone = sportTone(cat.code);
                 const href = active ? '/' : `/?sport=${cat.code}${sp.district ? `&district=${sp.district}` : ''}`;
                 return (
                   <Link
@@ -101,19 +111,19 @@ export default async function Home({ searchParams }: Props) {
                     href={href}
                     className={`focus-visible:outline-accent flex flex-col items-center gap-2 rounded-2xl border p-3.5 text-center shadow-sm transition-all duration-300 hover:-translate-y-1 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 ${
                       active
-                        ? 'border-transparent bg-gradient-to-br from-accent to-accent-strong text-white shadow-accent'
+                        ? 'border-transparent bg-lime text-lime-ink shadow-md'
                         : 'border-line bg-surface text-foreground hover:border-transparent hover:shadow-md'
                     }`}
                   >
                     <span
                       className={`flex h-9 w-9 items-center justify-center rounded-xl ${
-                        active ? 'bg-white/20 text-white' : 'bg-accent-wash text-accent-strong'
+                        active ? 'bg-lime-ink/10 text-lime-ink' : `${tone.bg} ${tone.text}`
                       }`}
                     >
                       <SportIcon code={cat.code} className="h-4 w-4" />
                     </span>
                     <span className="font-display text-xs font-bold">{cat.displayName}</span>
-                    <span className={`text-[10px] font-semibold ${active ? 'text-white/80' : 'text-faint'}`}>
+                    <span className={`text-[10px] font-semibold ${active ? 'text-lime-ink/70' : 'text-faint'}`}>
                       {cat.venueCount} venue{cat.venueCount === 1 ? '' : 's'}
                     </span>
                   </Link>
@@ -139,7 +149,13 @@ export default async function Home({ searchParams }: Props) {
               {areaCategories.map((area, i) => {
                 const active = sp.district === area.name;
                 const href = active ? '/' : `/?district=${encodeURIComponent(area.name)}${sp.sport ? `&sport=${sp.sport}` : ''}`;
-                const tones = ['pitch-thumb', 'pitch-thumb tone-flood', 'pitch-thumb tone-ink'];
+                const tones = [
+                  'pitch-thumb',
+                  'pitch-thumb tone-flood',
+                  'pitch-thumb tone-ink',
+                  'pitch-thumb tone-sky',
+                  'pitch-thumb tone-lime',
+                ];
                 return (
                   <Link
                     key={area.name}

@@ -6,6 +6,9 @@ import { SiteHeader } from '@/components/site-header';
 import { SiteFooter } from '@/components/site-footer';
 import { SuspendedBanner } from '@/components/suspended-banner';
 import { LocationProvider } from '@/components/location-provider';
+import { BottomTabBar } from '@/components/bottom-tab-bar';
+import { getSessionActor } from '@/lib/auth/session';
+import { countUnreadNotifications } from '@/domain/notifications/queries';
 import './globals.css';
 
 // PlayCairo's type pairing (design canvas): Manrope for display/headline
@@ -33,7 +36,10 @@ export const metadata: Metadata = {
   description: 'Find and book sports facilities in Cairo — pitches, courts, and open games.',
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const actor = await getSessionActor();
+  const unreadCount = actor ? await countUnreadNotifications(actor.userId) : 0;
+
   return (
     <html
       lang="en"
@@ -43,8 +49,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <LocationProvider>
           <SiteHeader />
           <SuspendedBanner />
-          <div className="flex-1">{children}</div>
+          {/* pb-16 reserves room for the fixed BottomTabBar on mobile so
+           * it never overlaps a page's last row of content; sm:pb-0
+           * drops that padding once the bar itself hides at sm. */}
+          <div className="flex-1 pb-16 sm:pb-0">{children}</div>
           <SiteFooter />
+          <BottomTabBar isSignedIn={!!actor} unreadCount={unreadCount} />
         </LocationProvider>
         {/* No-ops off Vercel (local dev, this sandbox) — real telemetry
          * only once actually deployed there. See docs/operations/monitoring.md. */}

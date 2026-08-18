@@ -25,3 +25,22 @@ export function SportIcon({ code, className }: { code: string; className?: strin
       return <Activity className={className} aria-hidden />;
   }
 }
+
+/**
+ * A tone (wash background + matching text) per sport, cycled from the
+ * palette's spectrum tokens (src/app/globals.css) purely so a grid of
+ * sport badges reads as colorful and alive rather than one flat green
+ * wash — never meaningful (a sport isn't "the coral one"), just a
+ * stable per-code assignment. Any code not listed falls back to the
+ * brand accent, so a newly added sport never breaks styling.
+ */
+const SPORT_TONES: Record<string, { bg: string; text: string }> = {
+  football: { bg: 'bg-lime-wash', text: 'text-lime-ink' },
+  basketball: { bg: 'bg-spectrum-coral-wash', text: 'text-spectrum-coral' },
+  padel: { bg: 'bg-spectrum-sky-wash', text: 'text-spectrum-sky' },
+  tennis: { bg: 'bg-spectrum-violet-wash', text: 'text-spectrum-violet' },
+};
+
+export function sportTone(code: string): { bg: string; text: string } {
+  return SPORT_TONES[code] ?? { bg: 'bg-accent-wash', text: 'text-accent-strong' };
+}

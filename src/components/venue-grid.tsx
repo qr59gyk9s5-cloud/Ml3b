@@ -13,9 +13,20 @@ import Link from 'next/link';
 import { MapPin } from 'lucide-react';
 import { useLocation } from './location-provider';
 import { distanceKm, formatDistanceKm } from '@/lib/geo/distance';
-import { SportIcon } from './sport-icon';
+import { SportIcon, sportTone } from './sport-icon';
 import { formatPriceMinor } from '@/lib/format/money';
 import type { VenueSummary } from '@/domain/venue/queries';
+
+// Cover-art tone for venues with no real photo yet — cycled per venue
+// (stable by id, not by list position, so a venue keeps its color as
+// distance-sort reorders the grid) purely for visual variety across the
+// grid. Never meaningful: a venue isn't "the sky one".
+const THUMB_TONES = ['', 'tone-flood', 'tone-sky', 'tone-lime', 'tone-ink'];
+function thumbTone(venueId: string): string {
+  let hash = 0;
+  for (let i = 0; i < venueId.length; i++) hash = (hash * 31 + venueId.charCodeAt(i)) | 0;
+  return THUMB_TONES[Math.abs(hash) % THUMB_TONES.length];
+}
 
 export function VenueGrid({ venues }: { venues: VenueSummary[] }) {
   const { coords } = useLocation();
@@ -64,8 +75,15 @@ export function VenueGrid({ venues }: { venues: VenueSummary[] }) {
               href={`/venues/${venue.slug}`}
               className="focus-visible:outline-accent group flex gap-3.5 rounded-2xl border border-line bg-surface p-3.5 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-transparent hover:shadow-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
             >
-              <div className="pitch-thumb flex h-20 w-20 flex-none items-center justify-center rounded-xl text-2xl">
+              <div
+                className={`pitch-thumb ${thumbTone(venue.id)} relative flex h-20 w-20 flex-none items-center justify-center rounded-xl text-2xl`}
+              >
                 🏟️
+                {minPriceMinor !== null && currency && (
+                  <span className="absolute bottom-1 left-1/2 -translate-x-1/2 rounded-full bg-lime px-1.5 py-0.5 text-[9px] font-extrabold whitespace-nowrap text-lime-ink shadow-sm">
+                    {formatPriceMinor(minPriceMinor, currency)}/hr
+                  </span>
+                )}
               </div>
               <div className="flex min-w-0 flex-1 flex-col justify-center gap-1">
                 <span className="truncate font-display text-sm font-bold text-foreground group-hover:text-accent-strong">
@@ -81,18 +99,21 @@ export function VenueGrid({ venues }: { venues: VenueSummary[] }) {
                     </span>
                   ) : null}
                 </span>
-                <div className="mt-1 flex items-center gap-2">
+                <div className="mt-2 flex items-center gap-2">
                   {sportCodes.length > 0 && (
                     <div className="flex items-center gap-1">
-                      {sportCodes.slice(0, 4).map((code) => (
-                        <span
-                          key={code}
-                          className="flex h-5 w-5 items-center justify-center rounded-full bg-accent-wash text-accent-strong"
-                          title={code}
-                        >
-                          <SportIcon code={code} className="h-3 w-3" />
-                        </span>
-                      ))}
+                      {sportCodes.slice(0, 4).map((code) => {
+                        const tone = sportTone(code);
+                        return (
+                          <span
+                            key={code}
+                            className={`flex h-5 w-5 items-center justify-center rounded-full ${tone.bg} ${tone.text}`}
+                            title={code}
+                          >
+                            <SportIcon code={code} className="h-3 w-3" />
+                          </span>
+                        );
+                      })}
                     </div>
                   )}
                   {facilityCount > 0 && (
@@ -101,11 +122,6 @@ export function VenueGrid({ venues }: { venues: VenueSummary[] }) {
                     </span>
                   )}
                 </div>
-                {minPriceMinor !== null && currency && (
-                  <span className="mt-0.5 font-display text-xs font-bold text-accent-strong">
-                    From {formatPriceMinor(minPriceMinor, currency)}/hr
-                  </span>
-                )}
               </div>
             </Link>
           </li>
