@@ -1,6 +1,13 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { Building2, CalendarSearch, ScrollText, Users } from 'lucide-react';
+import {
+  Building2,
+  CalendarSearch,
+  LayoutDashboard,
+  ScrollText,
+  ShieldCheck,
+  Users,
+} from 'lucide-react';
 import { getSessionActor } from '@/lib/auth/session';
 
 /**
@@ -28,6 +35,10 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       </div>
 
       <nav className="mb-6 flex flex-wrap gap-1.5 border-b border-line pb-3">
+        <Link href="/admin" className={navLinkClass}>
+          <LayoutDashboard className="h-3.5 w-3.5" aria-hidden />
+          Overview
+        </Link>
         <Link href="/admin/venues" className={navLinkClass}>
           <Building2 className="h-3.5 w-3.5" aria-hidden />
           Venues
@@ -43,6 +54,10 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         <Link href="/admin/audit-log" className={navLinkClass}>
           <ScrollText className="h-3.5 w-3.5" aria-hidden />
           Audit log
+        </Link>
+        <Link href="/admin/admins" className={navLinkClass}>
+          <ShieldCheck className="h-3.5 w-3.5" aria-hidden />
+          Admins
         </Link>
       </nav>
 

@@ -47,22 +47,20 @@ one actually surfaces today:
 | ----------------------- | --------------------------------------------------------------------------------------------------------------- |
 | Server errors           | Vercel Logs (automatic)                                                                                         |
 | Database reachability   | `GET /api/health` + an uptime pinger (above)                                                                    |
-| Failed background jobs  | `outbox_events` rows stuck `status='FAILED'` — no dashboard yet, see below                                      |
-| Failed notifications    | `notifications` rows with `status='FAILED'` — same, no dashboard yet                                            |
+| Failed background jobs  | `/admin` overview panel + `outbox_events` rows directly (`status='FAILED'`)                                     |
+| Failed notifications    | `/admin` overview panel + `notifications` rows directly (`status='FAILED'`)                                     |
 | Booking conflicts       | Every `CONFLICT` `DomainError` from `transitionBooking()` — logged via Vercel Logs today, not yet counted/rated |
 | Authentication failures | Supabase's own Auth logs (Supabase dashboard → Authentication → Logs)                                           |
 | AI agent errors         | N/A — no AI agent exists yet (`docs/architecture/ai-agent.md`)                                                  |
 
-**Known gap, flagged honestly**: "failed background jobs" and "failed
-notifications" have no dedicated dashboard — they're real rows in real
-tables (`outbox_events`, `notifications`), queryable, but nothing
-surfaces them proactively yet. The lowest-effort real fix once there's
-production traffic: extend `/api/health` (or a new
-`/api/admin/health` behind the existing admin gate) to also report a
-count of `FAILED` rows in both tables, and/or add a small panel to
-`/admin` for it (`src/app/admin/`, Phase 11). Not built now because
-there's no real traffic yet to make it worth the surface area — this is
-a "when you actually need it" deferral, not a "forgot about it" one.
+`/admin` (`src/app/admin/page.tsx`) is the console's landing page —
+`getSystemHealthSummary()` (`src/domain/admin/queries.ts`) counts
+`FAILED` rows in both tables plus pending venue approvals. It's a
+counter, not a drill-down — still a direct database query to see the
+actual stuck rows and reconcile them, same as before. Extending it into
+a real drill-down (which rows, when, why) is the next honest
+increment, deferred until real traffic makes the counts non-zero often
+enough to need it.
 
 ## Booking-correctness and payment incidents
 

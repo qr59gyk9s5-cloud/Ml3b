@@ -7,12 +7,14 @@
  * itself) is admin-only by nature, so these throw FORBIDDEN rather than
  * quietly filtering.
  */
-import { and, desc, eq, getTableColumns, gte, ilike, lte } from 'drizzle-orm';
+import { and, count, desc, eq, getTableColumns, gte, ilike, lte } from 'drizzle-orm';
 import { getDb } from '@/lib/db/client';
 import {
   auditLogs,
   bookings,
   facilities,
+  notifications,
+  outboxEvents,
   profiles,
   venues,
   type AuditLog,
@@ -96,6 +98,32 @@ export async function listAuditLogs(
     .orderBy(desc(auditLogs.createdAt))
     .limit(params.limit ?? 100);
   return rows;
+}
+
+export interface SystemHealthSummary {
+  pendingVenueApprovals: number;
+  failedOutboxEvents: number;
+  failedNotifications: number;
+}
+
+/** The admin console's overview panel (docs/operations/monitoring.md's
+ * flagged "no dashboard yet" gap) — everything a founder should glance
+ * at before assuming "no news is good news." Deliberately just counts,
+ * not the rows themselves: this is a health signal, not a place to
+ * investigate from (that's a direct DB query, or a future drill-down). */
+export async function getSystemHealthSummary(actor: AdminActor): Promise<SystemHealthSummary> {
+  requireAdmin(actor);
+  const db = getDb();
+  const [[pending], [failedOutbox], [failedNotifications]] = await Promise.all([
+    db.select({ n: count() }).from(venues).where(eq(venues.status, 'PENDING_REVIEW')),
+    db.select({ n: count() }).from(outboxEvents).where(eq(outboxEvents.status, 'FAILED')),
+    db.select({ n: count() }).from(notifications).where(eq(notifications.status, 'FAILED')),
+  ]);
+  return {
+    pendingVenueApprovals: pending.n,
+    failedOutboxEvents: failedOutbox.n,
+    failedNotifications: failedNotifications.n,
+  };
 }
 
 /** Case-insensitive partial match on full_name — email search is exact

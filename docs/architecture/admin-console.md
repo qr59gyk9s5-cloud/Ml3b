@@ -1,16 +1,28 @@
 # Admin console
 
-Phase 11. Cross-cutting platform-admin tools: venue approval/moderation,
-exceptional booking correction, user suspension, and the audit trail
-those actions write to. Everything here sits behind `/admin/*`, gated
-server-side in `src/app/admin/layout.tsx` (redirects a non-admin) — every
-domain-layer call underneath re-checks `isPlatformAdmin` itself too, per
-CLAUDE.md's "authorization is server-side, always, never just a hidden
-UI element."
+Phase 11 (extended in Phase 12). Cross-cutting platform-admin tools:
+venue approval/moderation, exceptional booking correction, user
+suspension, admin access management, a system-health overview, and the
+audit trail those actions write to. Everything here sits behind
+`/admin/*`, gated server-side in `src/app/admin/layout.tsx` (redirects a
+non-admin) — every domain-layer call underneath re-checks
+`isPlatformAdmin` itself too, per CLAUDE.md's "authorization is
+server-side, always, never just a hidden UI element."
 
 **Implementation status: real**, not a stub — schema, RLS, domain logic,
 and UI all actually work. What's deliberately _not_ built is called out
 below, not silently missing.
+
+## System health overview
+
+`/admin` (the console's landing page, not a redirect) —
+`getSystemHealthSummary()` (`src/domain/admin/queries.ts`) surfaces
+pending venue approvals, and counts of `outbox_events`/`notifications`
+rows stuck `status='FAILED'`, closing the gap
+`docs/operations/monitoring.md` originally flagged as "no dashboard
+yet." Deliberately just counts, not the rows themselves — a health
+signal to notice something's wrong, not a place to investigate from;
+that's still a direct database query today.
 
 ## Venue approval & moderation
 
@@ -87,7 +99,7 @@ is built here.
 - `src/domain/admin/users.ts`'s `suspendUser`/`unsuspendUser` — admin
   only, reason required to suspend, can't suspend yourself, can't
   suspend another platform admin (revoking admin access is a separate,
-  deliberately-not-built capability — see below).
+  separately-audited step — see "Managing admin access" below).
 - **Enforcement**: `src/domain/admin/suspension.ts`'s `isUserSuspended()`
   is checked as a blanket precondition — independent of the normal
   role/ownership `allow` checks — in `createBookingRequest`,
@@ -111,10 +123,18 @@ is built here.
   (`full_name`, `phone`, `avatar_url`, `updated_at`) — never
   `suspended_at`/`suspended_reason`/`suspended_by`.
 
-**Deliberately not built:** revoking an existing admin's `platform_admins`
-grant. `ADR-005` treats admin grants as their own explicit event; nothing
-in this phase asked for a revoke UI, and `suspendUser` refuses to act on
-an admin account rather than silently allowing a lockout path.
+## Managing admin access
+
+`/admin/admins` — grant by email (must already have an account) and
+revoke, both fully audited (`ADMIN_GRANTED`/`ADMIN_REVOKED`).
+`revokePlatformAdmin` refuses two cases regardless of who's asking:
+revoking your own access (avoids an accidental self-lockout mid-click),
+and revoking the very last remaining admin (avoids a total lockout with
+nobody left who can grant it back in — that would need a direct
+database fix outside the app). `suspendUser` still separately refuses to
+act on an admin account — revoking admin access is a deliberately
+distinct, separately-audited step from suspension, never folded into
+one action.
 
 ## Audit log
 
@@ -129,15 +149,23 @@ propagates like any other write in the same call.
   — written only via the privileged app connection, and never edited or
   deleted once written.
 - `/admin/audit-log` — newest first, filterable by resource type.
-- Scope: every admin-performed venue-moderation transition and booking
-  override, plus user suspend/unsuspend. Ordinary admin actions that
-  don't need special accountability (e.g. an admin confirming a
-  `REQUESTED` booking exactly as venue staff would) are **not** logged
-  here — `booking_events` already records those with `actor_type=ADMIN`.
-- Two other matrix rows ("View another customer's booking ✅ audited",
-  "Access another venue's data ✅ audited") are **not yet instrumented**
-  — those are read-path actions, and auditing every admin read would
-  mean touching every query function rather than the handful of
-  mutations this phase covers. Flagged as a real gap, not silently
-  dropped; revisit if/when admin read access is used often enough to
-  need its own trail.
+- Scope: every admin-performed venue-moderation transition, booking
+  override, user suspend/unsuspend, and admin grant/revoke. Ordinary
+  admin actions that don't need special accountability (e.g. an admin
+  confirming a `REQUESTED` booking exactly as venue staff would) are
+  **not** logged here — `booking_events` already records those with
+  `actor_type=ADMIN`.
+- The two read-path matrix rows are now instrumented too:
+  `getBookingById` (`src/domain/booking/queries.ts`) logs
+  `BOOKING_VIEWED_BY_ADMIN` and `getVenueByIdForStaff`
+  (`src/domain/venue/staff-queries.ts`) logs
+  `VENUE_DATA_ACCESSED_BY_ADMIN` — but only when access came purely from
+  being an admin (`ctx.isPlatformAdmin` true and the actual
+  ownership/membership check false), never for the genuine owner/staff/
+  customer's own everyday access to their own data. Every _other_ read
+  path (e.g. `listBookingsForVenueWithDetails`) still isn't
+  instrumented — auditing literally every admin read would mean
+  touching every query function for a benefit that's marginal once the
+  two highest-value ones (a specific booking, a specific venue) are
+  covered. Flagged as a real, narrower-than-total gap, not silently
+  dropped.
