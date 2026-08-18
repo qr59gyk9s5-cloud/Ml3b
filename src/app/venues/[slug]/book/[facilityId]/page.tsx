@@ -170,6 +170,16 @@ export default async function BookFacilityPage({ params, searchParams }: Props) 
           ? "Requesting holds nothing yet — the venue confirms before it's final."
           : 'Sign in to request a slot — browsing availability never requires an account.'}
       </p>
+
+      <div className="mt-6 rounded-2xl border border-dashed border-line px-4 py-3.5 text-center">
+        <p className="text-xs text-muted">Short a few players?</p>
+        <Link
+          href={`/venues/${slug}/book/${facilityId}/open-game`}
+          className="focus-visible:outline-accent text-xs font-bold text-accent-strong hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+        >
+          Organize an open game instead — post it, join as player #1, let others fill the roster
+        </Link>
+      </div>
     </main>
   );
 }
