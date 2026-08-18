@@ -1,5 +1,6 @@
 import { beforeAll, afterAll, describe, expect, it } from 'vitest';
-import { closeTestDatabase, resetTestDatabase } from '@/testing/db';
+import { eq } from 'drizzle-orm';
+import { closeTestDatabase, getTestDb, resetTestDatabase } from '@/testing/db';
 import {
   addVenueMember,
   createTestBooking,
@@ -8,6 +9,7 @@ import {
   createTestUser,
   createTestVenue,
 } from '@/testing/factories';
+import { auditLogs } from '@/lib/db/schema';
 import { getBookingById, listBookingsForCustomer, listBookingsForVenue } from './queries';
 
 async function setUpVenueAndFacility() {
@@ -66,6 +68,43 @@ describe('booking queries (DB-backed)', () => {
           isPlatformAdmin: true,
         }),
       ).rejects.toMatchObject({ code: 'NOT_FOUND' });
+    });
+
+    it('audits an admin viewing a booking that is not theirs', async () => {
+      const { venue, facility } = await setUpVenueAndFacility();
+      const admin = await createTestUser('Admin');
+      const customer = await createTestUser('Customer');
+      const booking = await createTestBooking(venue.id, facility.id, { customerId: customer.id });
+
+      await getBookingById(booking.id, { userId: admin.id, isPlatformAdmin: true });
+
+      const db = getTestDb();
+      const [log] = await db.select().from(auditLogs).where(eq(auditLogs.resourceId, booking.id));
+      expect(log.action).toBe('BOOKING_VIEWED_BY_ADMIN');
+      expect(log.actorId).toBe(admin.id);
+    });
+
+    it('does not audit the owning customer viewing their own booking', async () => {
+      const { venue, facility } = await setUpVenueAndFacility();
+      const customer = await createTestUser('Customer');
+      const booking = await createTestBooking(venue.id, facility.id, { customerId: customer.id });
+
+      await getBookingById(booking.id, { userId: customer.id, isPlatformAdmin: false });
+
+      const db = getTestDb();
+      const logs = await db.select().from(auditLogs).where(eq(auditLogs.resourceId, booking.id));
+      expect(logs).toHaveLength(0);
+    });
+
+    it('does not audit actual venue staff viewing a booking at their own venue', async () => {
+      const { owner, venue, facility } = await setUpVenueAndFacility();
+      const booking = await createTestBooking(venue.id, facility.id);
+
+      await getBookingById(booking.id, { userId: owner.id, isPlatformAdmin: false });
+
+      const db = getTestDb();
+      const logs = await db.select().from(auditLogs).where(eq(auditLogs.resourceId, booking.id));
+      expect(logs).toHaveLength(0);
     });
   });
 

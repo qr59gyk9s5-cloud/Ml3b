@@ -13,6 +13,7 @@ import type { BookingStatus } from '@/lib/config/constants';
 import { DomainError } from '@/domain/errors';
 import { isBookingOwner, isVenueStaffForBooking } from '@/domain/authz/booking';
 import { resolveBookingAuthzContext, type BookingActor } from './authz-context';
+import { recordAuditLog } from '@/domain/audit/log';
 
 export async function getBookingById(bookingId: string, actor: BookingActor): Promise<Booking> {
   const db = getDb();
@@ -25,6 +26,20 @@ export async function getBookingById(bookingId: string, actor: BookingActor): Pr
   if (!isBookingOwner(ctx) && !isVenueStaffForBooking(ctx)) {
     throw new DomainError('FORBIDDEN', 'You do not have permission to view this booking.');
   }
+
+  // "View another customer's booking ✅ audited" (docs/architecture/authorization.md).
+  // Only when access came purely from being an admin — the actual
+  // customer or actual venue staff viewing it isn't logged here.
+  if (ctx.isPlatformAdmin && !ctx.isOwningCustomer && ctx.venueRole === null) {
+    await recordAuditLog({
+      actorType: 'ADMIN',
+      actorId: actor.userId,
+      action: 'BOOKING_VIEWED_BY_ADMIN',
+      resourceType: 'booking',
+      resourceId: booking.id,
+    });
+  }
+
   return booking;
 }
 

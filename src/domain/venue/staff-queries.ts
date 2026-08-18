@@ -13,6 +13,7 @@ import type { VenueRole } from '@/lib/config/constants';
 import { DomainError } from '@/domain/errors';
 import { isVenueStaff } from '@/domain/authz/venue';
 import { resolveVenueAuthzContext, type VenueActor } from './authz-context';
+import { recordAuditLog } from '@/domain/audit/log';
 
 export interface StaffVenue {
   venue: Venue;
@@ -47,5 +48,20 @@ export async function getVenueByIdForStaff(venueId: string, actor: VenueActor): 
   if (!isVenueStaff(ctx)) {
     throw new DomainError('NOT_FOUND', 'Venue not found.');
   }
+
+  // "Access another venue's data ✅ audited" (docs/architecture/authorization.md).
+  // Only when access came purely from being an admin — an actual staff
+  // member viewing their own venue is not "another venue's data" and
+  // isn't logged here.
+  if (ctx.isPlatformAdmin && ctx.venueRole === null) {
+    await recordAuditLog({
+      actorType: 'ADMIN',
+      actorId: actor.userId,
+      action: 'VENUE_DATA_ACCESSED_BY_ADMIN',
+      resourceType: 'venue',
+      resourceId: venueId,
+    });
+  }
+
   return venue;
 }
