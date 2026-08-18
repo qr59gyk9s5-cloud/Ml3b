@@ -32,7 +32,9 @@ export const BOOKING_STATUS = [
 ] as const;
 export type BookingStatus = (typeof BOOKING_STATUS)[number];
 
-export const BOOKING_SOURCE = ['MARKETPLACE', 'MANUAL', 'ADMIN', 'IMPORT'] as const;
+/** OPEN_GAME (ADR-011): a booking created by an open game's organizer —
+ * still just a normal booking, this is the only marker. */
+export const BOOKING_SOURCE = ['MARKETPLACE', 'MANUAL', 'ADMIN', 'IMPORT', 'OPEN_GAME'] as const;
 export type BookingSource = (typeof BOOKING_SOURCE)[number];
 
 export const ACTOR_TYPE = ['CUSTOMER', 'VENUE_USER', 'ADMIN', 'SYSTEM', 'AI_AGENT'] as const;
@@ -49,13 +51,16 @@ export const AVAILABILITY_EXCEPTION_KIND = [
 ] as const;
 export type AvailabilityExceptionKind = (typeof AVAILABILITY_EXCEPTION_KIND)[number];
 
-/** Fixed, non-free-text reasons a venue can give when rejecting/cancelling a booking. */
+/** Fixed, non-free-text reasons a venue can give when rejecting/cancelling a booking.
+ * INSUFFICIENT_PLAYERS (ADR-011) is the one reason the SYSTEM actor uses, not a
+ * human — an open game that never reached its minimum roster by the join cutoff. */
 export const VENUE_CANCELLATION_REASON = [
   'MAINTENANCE',
   'WEATHER',
   'SCHEDULING_ERROR',
   'DOUBLE_BOOKED',
   'VENUE_CLOSED',
+  'INSUFFICIENT_PLAYERS',
   'OTHER',
 ] as const;
 export type VenueCancellationReason = (typeof VENUE_CANCELLATION_REASON)[number];
@@ -135,3 +140,52 @@ export const SUPPORTED_LOCALES = ['en', 'ar'] as const;
 export type SupportedLocale = (typeof SUPPORTED_LOCALES)[number];
 
 export const RTL_LOCALES: readonly SupportedLocale[] = ['ar'];
+
+/** ADR-011 / docs/architecture/open-games.md.
+ *
+ *   AWAITING_VENUE   --venue confirms--> FILLING
+ *   AWAITING_VENUE   --venue rejects/expires--> VENUE_REJECTED
+ *   FILLING          --roster >= minPlayers (auto_confirm_if_min_met=false)--> MINIMUM_REACHED
+ *   FILLING/MINIMUM_REACHED --roster >= minPlayers (auto_confirm_if_min_met=true)--> CONFIRMED
+ *   FILLING/MINIMUM_REACHED --roster == targetPlayers (either flag value)--> CONFIRMED
+ *   FILLING/MINIMUM_REACHED --cutoff arrives, still short--> FAILED_TO_FILL
+ *   FILLING/MINIMUM_REACHED --organizer cancels--> ORGANIZER_CANCELLED
+ *   FILLING/MINIMUM_REACHED --venue cancels the hold--> VENUE_CANCELLED
+ *
+ * No manual "organizer must decide" state — auto_confirm_if_min_met
+ * fully determines the outcome at cutoff, deterministically.
+ */
+export const OPEN_GAME_STATUS = [
+  'AWAITING_VENUE',
+  'FILLING',
+  'MINIMUM_REACHED',
+  'CONFIRMED',
+  'VENUE_REJECTED',
+  'FAILED_TO_FILL',
+  'ORGANIZER_CANCELLED',
+  'VENUE_CANCELLED',
+] as const;
+export type OpenGameStatus = (typeof OPEN_GAME_STATUS)[number];
+
+/** Terminal — an open game past one of these never transitions again. */
+export const OPEN_GAME_TERMINAL_STATUS: ReadonlySet<OpenGameStatus> = new Set([
+  'CONFIRMED',
+  'VENUE_REJECTED',
+  'FAILED_TO_FILL',
+  'ORGANIZER_CANCELLED',
+  'VENUE_CANCELLED',
+]);
+
+/** How long a venue's provisional accept holds the slot before it must
+ * either fill or fail, and how close to kickoff a game may still be
+ * created — global MVP constants, not yet a per-venue setting (flagged
+ * in docs/architecture/open-games.md, not silently assumed permanent). */
+export const OPEN_GAME_MAX_HOLD_HOURS = 48;
+export const OPEN_GAME_MIN_LEAD_TIME_HOURS = 4;
+
+export const OPEN_GAME_PLAYER_STATUS = ['JOINED', 'LEFT', 'REMOVED'] as const;
+export type OpenGamePlayerStatus = (typeof OPEN_GAME_PLAYER_STATUS)[number];
+
+/** Shared across every sport, unlike position (free text — see ADR-011). */
+export const SKILL_LEVEL = ['BEGINNER', 'INTERMEDIATE', 'ADVANCED', 'COMPETITIVE'] as const;
+export type SkillLevel = (typeof SKILL_LEVEL)[number];

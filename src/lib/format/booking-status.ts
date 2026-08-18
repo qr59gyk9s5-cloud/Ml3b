@@ -38,5 +38,6 @@ export const VENUE_REASON_LABEL: Record<VenueCancellationReason, string> = {
   SCHEDULING_ERROR: 'Scheduling error',
   DOUBLE_BOOKED: 'Double-booked',
   VENUE_CLOSED: 'Venue closed',
+  INSUFFICIENT_PLAYERS: 'Not enough players joined in time',
   OTHER: 'Other',
 };

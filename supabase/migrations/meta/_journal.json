@@ -99,6 +99,20 @@
       "when": 1786993216909,
       "tag": "0013_admin_domain_rls",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1787036711614,
+      "tag": "0014_open_games_domain",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1787036711615,
+      "tag": "0015_open_games_rls",
+      "breakpoints": true
     }
   ]
 }

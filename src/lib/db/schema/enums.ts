@@ -9,7 +9,10 @@ import {
   BOOKING_MODE,
   BOOKING_SOURCE,
   BOOKING_STATUS,
+  OPEN_GAME_PLAYER_STATUS,
+  OPEN_GAME_STATUS,
   PAYMENT_STATUS,
+  SKILL_LEVEL,
   VENUE_CANCELLATION_REASON,
   VENUE_ROLE,
   VENUE_STATUS,
@@ -24,3 +27,8 @@ export const bookingSourceEnum = pgEnum('booking_source', [...BOOKING_SOURCE]);
 export const actorTypeEnum = pgEnum('actor_type', [...ACTOR_TYPE]);
 export const cancellationReasonEnum = pgEnum('cancellation_reason', [...VENUE_CANCELLATION_REASON]);
 export const paymentStatusEnum = pgEnum('payment_status', [...PAYMENT_STATUS]);
+export const openGameStatusEnum = pgEnum('open_game_status', [...OPEN_GAME_STATUS]);
+export const openGamePlayerStatusEnum = pgEnum('open_game_player_status', [
+  ...OPEN_GAME_PLAYER_STATUS,
+]);
+export const skillLevelEnum = pgEnum('skill_level', [...SKILL_LEVEL]);
