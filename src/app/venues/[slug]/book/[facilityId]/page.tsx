@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
-import { ChevronLeft, MapPin } from 'lucide-react';
+import { CalendarDays, ChevronLeft, MapPin } from 'lucide-react';
 import { getActiveFacilityById, getPublicVenueBySlug } from '@/domain/venue/queries';
 import { getAvailableSlots } from '@/domain/availability/queries';
 import { addLocalDays, todayInTimeZone } from '@/domain/availability/time';
@@ -11,7 +11,8 @@ import { SportIcon } from '@/components/sport-icon';
 import {
   computeDurationOptions,
   computeValidStartIndexes,
-  formatDateLabel,
+  formatDayChip,
+  formatMonthYear,
   formatSlotTime,
 } from '@/lib/booking/slot-picker';
 import { requestBookingAction } from './actions';
@@ -59,7 +60,7 @@ export default async function BookFacilityPage({ params, searchParams }: Props) 
     <main className="mx-auto max-w-2xl px-4 py-6 sm:px-6">
       <Link
         href={`/venues/${slug}`}
-        className="mb-4 inline-flex items-center gap-1 text-xs font-bold text-accent"
+        className="mb-4 inline-flex items-center gap-1 font-display text-xs font-bold text-accent"
       >
         <ChevronLeft className="h-3.5 w-3.5" aria-hidden /> {venue.name}
       </Link>
@@ -69,7 +70,7 @@ export default async function BookFacilityPage({ params, searchParams }: Props) 
           <SportIcon code={facility.sportCode} className="h-5 w-5" />
         </span>
         <div className="min-w-0">
-          <h1 className="truncate text-xl font-extrabold tracking-tight text-foreground">
+          <h1 className="truncate font-display text-xl font-extrabold tracking-tight text-foreground">
             {facility.name}
           </h1>
           <p className="flex items-center gap-1 text-xs text-muted">
@@ -90,15 +91,17 @@ export default async function BookFacilityPage({ params, searchParams }: Props) 
 
       {durationOptions.length > 1 ? (
         <div className="mt-5 flex flex-wrap items-center gap-2">
-          <span className="text-xs font-bold tracking-wide text-faint uppercase">Duration</span>
+          <span className="font-display text-xs font-bold tracking-wide text-faint uppercase">
+            Duration
+          </span>
           {durationOptions.map((d) => (
             <Link
               key={d}
               href={`?date=${date}&duration=${d}`}
-              className={`rounded-full border px-3 py-1 text-xs font-bold transition-colors ${
+              className={`rounded-full border px-3 py-1 font-display text-xs font-bold transition-all ${
                 d === duration
-                  ? 'border-accent bg-accent text-white'
-                  : 'border-line text-muted hover:border-accent'
+                  ? 'border-transparent bg-foreground text-white shadow-md'
+                  : 'border-line text-muted hover:border-accent hover:text-accent-strong'
               }`}
             >
               {d} min
@@ -107,23 +110,45 @@ export default async function BookFacilityPage({ params, searchParams }: Props) 
         </div>
       ) : null}
 
-      <div className="mt-4 flex items-center gap-1.5 overflow-x-auto pb-1">
-        {dayLinks.map((d) => (
-          <Link
-            key={d}
-            href={`?date=${d}&duration=${duration}`}
-            className={`flex-none rounded-xl border px-3 py-1.5 text-xs font-bold transition-colors ${
-              d === date
-                ? 'border-accent bg-accent text-white'
-                : 'border-line text-muted hover:border-accent'
-            }`}
-          >
-            {formatDateLabel(d)}
-          </Link>
-        ))}
+      <div className="mt-6 flex items-center gap-1.5">
+        <CalendarDays className="h-3.5 w-3.5 text-faint" aria-hidden />
+        <span className="font-display text-xs font-bold text-foreground-soft">
+          {formatMonthYear(date)}
+        </span>
       </div>
 
-      <p className="mt-5 text-xs font-bold tracking-wide text-faint uppercase">
+      <div className="mt-3 flex items-center gap-2 overflow-x-auto pb-2">
+        {dayLinks.map((d) => {
+          const { weekday, day } = formatDayChip(d);
+          const isToday = d === today;
+          const isSelected = d === date;
+          return (
+            <Link
+              key={d}
+              href={`?date=${d}&duration=${duration}`}
+              className={`relative flex-none rounded-2xl border px-4 py-2.5 text-center transition-all duration-200 ${
+                isSelected
+                  ? 'border-transparent bg-gradient-to-br from-accent to-accent-strong text-white shadow-accent'
+                  : 'border-line bg-surface text-foreground-soft hover:border-accent hover:text-accent-strong'
+              }`}
+            >
+              {isToday ? (
+                <span className="absolute -top-2 left-1/2 -translate-x-1/2 rounded-full bg-floodlight px-1.5 py-0.5 text-[8px] font-bold tracking-wide text-white uppercase">
+                  Today
+                </span>
+              ) : null}
+              <span
+                className={`block font-display text-[10px] font-bold tracking-wide uppercase ${isSelected ? 'text-white/80' : 'text-faint'}`}
+              >
+                {weekday}
+              </span>
+              <span className="mt-0.5 block font-display text-base font-extrabold">{day}</span>
+            </Link>
+          );
+        })}
+      </div>
+
+      <p className="mt-5 font-display text-xs font-bold tracking-wide text-faint uppercase">
         {duration}-minute slots · {formatPriceMinor(pricePerBooking, facility.currency)} total
       </p>
 
@@ -137,11 +162,16 @@ export default async function BookFacilityPage({ params, searchParams }: Props) 
         </p>
       ) : (
         <div className="mt-3 grid grid-cols-3 gap-2 sm:grid-cols-4">
-          {validStartIndexes.map((i) => {
+          {validStartIndexes.map((i, idx) => {
             const start = slots[i].startAt;
             const end = slots[i + slotsNeeded - 1].endAt;
             return (
-              <form key={start.toISOString()} action={requestBookingAction}>
+              <form
+                key={start.toISOString()}
+                action={requestBookingAction}
+                className="animate-rise-up"
+                style={{ animationDelay: `${Math.min(idx, 8) * 40}ms` }}
+              >
                 <input type="hidden" name="venueSlug" value={slug} />
                 <input type="hidden" name="facilityId" value={facility.id} />
                 <input type="hidden" name="date" value={date} />
@@ -150,9 +180,9 @@ export default async function BookFacilityPage({ params, searchParams }: Props) 
                 <button
                   type="submit"
                   title={actor ? 'Request this slot' : 'Sign in to request this slot'}
-                  className="focus-visible:outline-accent flex w-full flex-col items-center rounded-xl border border-line bg-surface px-2 py-2.5 text-center transition-colors hover:border-accent hover:bg-accent-wash focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+                  className="focus-visible:outline-accent flex w-full flex-col items-center rounded-xl border border-line bg-surface px-2 py-2.5 text-center transition-all duration-200 hover:-translate-y-0.5 hover:border-accent hover:bg-accent-wash hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
                 >
-                  <span className="text-xs font-bold text-foreground">
+                  <span className="font-display text-xs font-bold text-foreground">
                     {formatSlotTime(start, venue.timezone)}
                   </span>
                   <span className="text-[10px] text-faint">
@@ -175,7 +205,7 @@ export default async function BookFacilityPage({ params, searchParams }: Props) 
         <p className="text-xs text-muted">Short a few players?</p>
         <Link
           href={`/venues/${slug}/book/${facilityId}/open-game`}
-          className="focus-visible:outline-accent text-xs font-bold text-accent-strong hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+          className="focus-visible:outline-accent font-display text-xs font-bold text-accent-strong hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
         >
           Organize an open game instead — post it, join as player #1, let others fill the roster
         </Link>

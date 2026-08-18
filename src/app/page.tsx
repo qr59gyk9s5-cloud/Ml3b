@@ -1,32 +1,68 @@
 import Link from 'next/link';
 import { MapPin, Search } from 'lucide-react';
-import { listActiveVenuesWithSummary } from '@/domain/venue/queries';
+import {
+  listActiveVenuesWithSummary,
+  listAreaCategories,
+  listSportCategories,
+} from '@/domain/venue/queries';
 import { SportIcon } from '@/components/sport-icon';
-import { formatPriceMinor } from '@/lib/format/money';
+import { VenueGrid } from '@/components/venue-grid';
+import { LocateButton } from '@/components/locate-button';
 
 /**
- * Public venue listing. Real data from the database (listActiveVenuesWithSummary
- * explicitly filters status=ACTIVE — see src/domain/venue/queries.ts) — no
- * mocked venues, no fabricated ratings. Search/filters are visual only for
- * now (no query params wired yet) — never fake results behind them.
+ * Public venue browse: hero, real "browse by sport" / "browse by area"
+ * categories (src/domain/venue/queries.ts — counted from actual live
+ * venues, never a fixed list), and the venue grid, sorted by distance
+ * client-side once the visitor's location is known
+ * (src/components/venue-grid.tsx). ?sport=&district= filter server-side
+ * — real filters, not decorative chips.
  */
-export default async function Home() {
-  const venues = await listActiveVenuesWithSummary();
+type Props = {
+  searchParams: Promise<{ sport?: string; district?: string }>;
+};
+
+export default async function Home({ searchParams }: Props) {
+  const sp = await searchParams;
+  const [venues, sportCategories, areaCategories] = await Promise.all([
+    listActiveVenuesWithSummary(),
+    listSportCategories(),
+    listAreaCategories(),
+  ]);
+
+  const filtered = venues.filter((v) => {
+    if (sp.sport && !v.sportCodes.includes(sp.sport)) return false;
+    if (sp.district && (v.venue.district ?? v.venue.city) !== sp.district) return false;
+    return true;
+  });
 
   return (
     <main>
-      <section className="border-b border-line bg-surface-2">
-        <div className="mx-auto max-w-5xl px-4 py-12 sm:px-6 sm:py-16">
-          <p className="mb-2 flex items-center gap-1.5 text-xs font-bold tracking-wide text-accent-strong uppercase">
+      <section className="relative overflow-hidden border-b border-line bg-surface-2">
+        <div
+          aria-hidden
+          className="animate-float pointer-events-none absolute -top-16 right-[-40px] h-56 w-56 rounded-full opacity-40 blur-[2px]"
+          style={{ background: 'radial-gradient(circle at 32% 30%, var(--accent-glow), var(--accent-strong))' }}
+        />
+        <div
+          aria-hidden
+          className="animate-float pointer-events-none absolute top-24 right-24 h-28 w-28 rounded-full opacity-30 blur-[2px]"
+          style={{
+            background: 'radial-gradient(circle at 32% 30%, var(--floodlight), var(--floodlight-strong))',
+            animationDelay: '0.6s',
+            animationDuration: '9s',
+          }}
+        />
+        <div className="relative mx-auto max-w-5xl px-4 py-12 sm:px-6 sm:py-16">
+          <p className="mb-2 flex items-center gap-1.5 font-display text-xs font-bold tracking-wide text-accent-strong uppercase">
             <MapPin className="h-3.5 w-3.5" aria-hidden />
             Cairo, Egypt
           </p>
-          <h1 className="max-w-xl text-3xl font-extrabold tracking-tight text-foreground sm:text-4xl">
-            Find a pitch or court, and request it in seconds
+          <h1 className="max-w-xl font-display text-3xl font-extrabold tracking-tight text-foreground sm:text-4xl">
+            Find your court, and play in seconds
           </h1>
           <p className="mt-3 max-w-lg text-sm leading-relaxed text-muted sm:text-base">
-            Real-time availability from venues across Cairo. Send a request, the venue confirms, you
-            play — no phone calls, no guesswork.
+            Real-time availability from venues across Cairo. Send a request, the venue confirms,
+            you play — no phone calls, no guesswork.
           </p>
 
           <div className="mt-6 flex max-w-md items-center gap-2 rounded-2xl border border-line bg-surface p-1.5 shadow-sm">
@@ -37,81 +73,118 @@ export default async function Home() {
               placeholder="Search by venue or district (coming soon)"
               className="w-full bg-transparent px-1 py-1.5 text-sm text-foreground placeholder:text-faint focus:outline-none"
             />
+            <LocateButton />
           </div>
         </div>
       </section>
 
-      <section className="mx-auto max-w-5xl px-4 py-8 sm:px-6">
-        <h2 className="mb-4 text-sm font-bold tracking-wide text-faint uppercase">
-          {venues.length > 0
-            ? `${venues.length} venue${venues.length === 1 ? '' : 's'} open now`
-            : 'Venues'}
-        </h2>
-
-        {venues.length === 0 ? (
-          <div className="flex flex-col items-center gap-2 rounded-2xl border border-dashed border-line px-6 py-16 text-center">
-            <span aria-hidden className="text-2xl">
-              🏟️
-            </span>
-            <p className="text-sm font-medium text-foreground">No venues are live yet</p>
-            <p className="max-w-sm text-xs text-muted">
-              Venues appear here once a platform admin approves them. Check back soon.
-            </p>
-          </div>
-        ) : (
-          <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            {venues.map(({ venue, sportCodes, facilityCount, minPriceMinor, currency }) => (
-              <li key={venue.id}>
-                <Link
-                  href={`/venues/${venue.slug}`}
-                  className="focus-visible:outline-accent group flex gap-3.5 rounded-2xl border border-line bg-surface p-3.5 shadow-sm transition-all hover:-translate-y-0.5 hover:border-accent hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
-                >
-                  <div
-                    aria-hidden
-                    className="venue-thumb flex h-20 w-20 flex-none items-center justify-center rounded-xl text-2xl"
-                  >
-                    🏟️
-                  </div>
-                  <div className="flex min-w-0 flex-1 flex-col justify-center gap-1">
-                    <span className="truncate text-sm font-bold text-foreground group-hover:text-accent-strong">
-                      {venue.name}
-                    </span>
-                    <span className="flex items-center gap-1 truncate text-xs text-muted">
-                      <MapPin className="h-3 w-3 flex-none" aria-hidden />
-                      {[venue.district, venue.city].filter(Boolean).join(', ')}
-                    </span>
-                    <div className="mt-1 flex items-center gap-2">
-                      {sportCodes.length > 0 && (
-                        <div className="flex items-center gap-1">
-                          {sportCodes.slice(0, 4).map((code) => (
-                            <span
-                              key={code}
-                              className="flex h-5 w-5 items-center justify-center rounded-full bg-accent-wash text-accent-strong"
-                              title={code}
-                            >
-                              <SportIcon code={code} className="h-3 w-3" />
-                            </span>
-                          ))}
-                        </div>
-                      )}
-                      {facilityCount > 0 && (
-                        <span className="text-[11px] text-faint">
-                          {facilityCount} facilit{facilityCount === 1 ? 'y' : 'ies'}
-                        </span>
-                      )}
-                    </div>
-                    {minPriceMinor !== null && currency && (
-                      <span className="mt-0.5 text-xs font-bold text-accent-strong">
-                        From {formatPriceMinor(minPriceMinor, currency)}/hr
-                      </span>
-                    )}
-                  </div>
+      <div className="mx-auto max-w-5xl px-4 sm:px-6">
+        {sportCategories.length > 0 ? (
+          <section className="pt-8">
+            <div className="mb-3 flex items-baseline justify-between">
+              <h2 className="font-display text-sm font-bold tracking-wide text-faint uppercase">
+                Browse by sport
+              </h2>
+              {sp.sport ? (
+                <Link href="/" className="text-xs font-bold text-accent">
+                  Clear
                 </Link>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
+              ) : null}
+            </div>
+            <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+              {sportCategories.map((cat) => {
+                const active = sp.sport === cat.code;
+                const href = active ? '/' : `/?sport=${cat.code}${sp.district ? `&district=${sp.district}` : ''}`;
+                return (
+                  <Link
+                    key={cat.code}
+                    href={href}
+                    className={`focus-visible:outline-accent flex flex-col items-center gap-2 rounded-2xl border p-3.5 text-center shadow-sm transition-all duration-300 hover:-translate-y-1 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 ${
+                      active
+                        ? 'border-transparent bg-gradient-to-br from-accent to-accent-strong text-white shadow-accent'
+                        : 'border-line bg-surface text-foreground hover:border-transparent hover:shadow-md'
+                    }`}
+                  >
+                    <span
+                      className={`flex h-9 w-9 items-center justify-center rounded-xl ${
+                        active ? 'bg-white/20 text-white' : 'bg-accent-wash text-accent-strong'
+                      }`}
+                    >
+                      <SportIcon code={cat.code} className="h-4 w-4" />
+                    </span>
+                    <span className="font-display text-xs font-bold">{cat.displayName}</span>
+                    <span className={`text-[10px] font-semibold ${active ? 'text-white/80' : 'text-faint'}`}>
+                      {cat.venueCount} venue{cat.venueCount === 1 ? '' : 's'}
+                    </span>
+                  </Link>
+                );
+              })}
+            </div>
+          </section>
+        ) : null}
+
+        {areaCategories.length > 0 ? (
+          <section className="pt-8">
+            <div className="mb-3 flex items-baseline justify-between">
+              <h2 className="font-display text-sm font-bold tracking-wide text-faint uppercase">
+                Browse by area
+              </h2>
+              {sp.district ? (
+                <Link href="/" className="text-xs font-bold text-accent">
+                  Clear
+                </Link>
+              ) : null}
+            </div>
+            <div className="flex gap-3 overflow-x-auto pb-1">
+              {areaCategories.map((area, i) => {
+                const active = sp.district === area.name;
+                const href = active ? '/' : `/?district=${encodeURIComponent(area.name)}${sp.sport ? `&sport=${sp.sport}` : ''}`;
+                const tones = ['pitch-thumb', 'pitch-thumb tone-flood', 'pitch-thumb tone-ink'];
+                return (
+                  <Link
+                    key={area.name}
+                    href={href}
+                    className={`focus-visible:outline-accent relative flex h-24 w-40 flex-none flex-col justify-end overflow-hidden rounded-2xl p-3.5 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 ${tones[i % tones.length]} ${active ? 'ring-2 ring-accent ring-offset-2' : ''}`}
+                  >
+                    <span
+                      aria-hidden
+                      className="absolute inset-0 bg-gradient-to-t from-black/55 to-transparent"
+                    />
+                    <span className="relative font-display text-sm font-bold text-white">
+                      {area.name}
+                    </span>
+                    <span className="relative text-[10px] font-semibold text-white/85">
+                      {area.venueCount} venue{area.venueCount === 1 ? '' : 's'}
+                    </span>
+                  </Link>
+                );
+              })}
+            </div>
+          </section>
+        ) : null}
+
+        <section className="py-8">
+          <h2 className="mb-4 font-display text-sm font-bold tracking-wide text-faint uppercase">
+            {filtered.length > 0
+              ? `${filtered.length} venue${filtered.length === 1 ? '' : 's'}${sp.sport || sp.district ? ' match' : ' open now'}`
+              : 'Venues'}
+          </h2>
+
+          {venues.length === 0 ? (
+            <div className="flex flex-col items-center gap-2 rounded-2xl border border-dashed border-line px-6 py-16 text-center">
+              <span aria-hidden className="text-2xl">
+                🏟️
+              </span>
+              <p className="text-sm font-medium text-foreground">No venues are live yet</p>
+              <p className="max-w-sm text-xs text-muted">
+                Venues appear here once a platform admin approves them. Check back soon.
+              </p>
+            </div>
+          ) : (
+            <VenueGrid venues={filtered} />
+          )}
+        </section>
+      </div>
     </main>
   );
 }

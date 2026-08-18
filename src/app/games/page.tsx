@@ -9,7 +9,7 @@ import { SportIcon } from '@/components/sport-icon';
 export const metadata: Metadata = { title: 'Open games' };
 
 const TONE_CLASS: Record<string, string> = {
-  pending: 'bg-floodlight-wash text-floodlight',
+  pending: 'bg-floodlight-wash text-floodlight-strong',
   positive: 'bg-accent-wash text-accent-strong',
   negative: 'bg-danger-wash text-danger',
   neutral: 'bg-surface-2 text-faint',
@@ -33,7 +33,9 @@ export default async function OpenGamesPage() {
     <main className="mx-auto max-w-2xl px-4 py-6 sm:px-6">
       <div className="mb-1 flex items-center gap-2">
         <Users className="h-5 w-5 text-accent-strong" aria-hidden />
-        <h1 className="text-xl font-extrabold tracking-tight text-foreground">Open games</h1>
+        <h1 className="font-display text-xl font-extrabold tracking-tight text-foreground">
+          Open games
+        </h1>
       </div>
       <p className="mb-6 text-xs text-muted">
         Need players? Join a game or open a facility&apos;s booking page to organize your own — you
@@ -45,52 +47,72 @@ export default async function OpenGamesPage() {
           <span aria-hidden className="text-2xl">
             ⚽
           </span>
-          <p className="text-sm font-medium text-foreground">No open games right now</p>
+          <p className="font-display text-sm font-bold text-foreground">No open games right now</p>
           <p className="max-w-sm text-xs text-muted">
             Browse venues and start one from a facility&apos;s booking page.
           </p>
           <Link
             href="/"
-            className="focus-visible:outline-accent mt-2 rounded-xl bg-accent px-4 py-2 text-xs font-bold text-white transition-colors hover:bg-accent-strong focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+            className="btn-sheen focus-visible:outline-accent mt-2 rounded-xl bg-gradient-to-br from-accent to-accent-strong px-4 py-2 font-display text-xs font-bold text-white shadow-accent transition-transform hover:-translate-y-0.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
           >
             Browse venues
           </Link>
         </div>
       ) : (
-        <ul className="flex flex-col gap-2.5">
-          {games.map((game) => (
-            <li key={game.id}>
-              <Link
-                href={`/games/${game.id}`}
-                className="focus-visible:outline-accent group flex items-center gap-3.5 rounded-2xl border border-line bg-surface p-3.5 shadow-sm transition-all hover:-translate-y-0.5 hover:border-accent hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
-              >
-                <span className="flex h-11 w-11 flex-none items-center justify-center rounded-xl bg-accent-wash text-accent-strong">
-                  <SportIcon code={game.sportCode} className="h-5 w-5" />
-                </span>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center justify-between gap-3">
-                    <p className="truncate text-sm font-bold text-foreground group-hover:text-accent-strong">
-                      {game.facilityName} · {game.venueName}
-                    </p>
-                    <span
-                      className={`flex-none rounded-full px-2 py-0.5 text-[10px] font-bold ${TONE_CLASS[OPEN_GAME_STATUS_TONE[game.status]]}`}
-                    >
-                      {OPEN_GAME_STATUS_LABEL[game.status]}
+        <ul className="flex flex-col gap-3">
+          {games.map((game, i) => {
+            const fillPct = Math.min(100, Math.round((game.joinedCount / game.targetPlayers) * 100));
+            const isFilling = game.status === 'FILLING' || game.status === 'MINIMUM_REACHED';
+            return (
+              <li key={game.id} className="animate-rise-up" style={{ animationDelay: `${i * 60}ms` }}>
+                <Link
+                  href={`/games/${game.id}`}
+                  className="focus-visible:outline-accent group block rounded-2xl border border-line bg-surface p-4 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-transparent hover:shadow-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+                >
+                  <div className="flex items-start gap-3.5">
+                    <span className="flex h-11 w-11 flex-none items-center justify-center rounded-xl bg-accent-wash text-accent-strong">
+                      <SportIcon code={game.sportCode} className="h-5 w-5" />
                     </span>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-start justify-between gap-3">
+                        <p className="truncate font-display text-sm font-bold text-foreground group-hover:text-accent-strong">
+                          {game.facilityName} · {game.venueName}
+                        </p>
+                        <span
+                          className={`flex flex-none items-center gap-1.5 rounded-full px-2.5 py-1 font-display text-[10px] font-bold ${TONE_CLASS[OPEN_GAME_STATUS_TONE[game.status]]}`}
+                        >
+                          {isFilling ? (
+                            <span className="animate-pulse-dot h-1.5 w-1.5 rounded-full bg-current" aria-hidden />
+                          ) : null}
+                          {OPEN_GAME_STATUS_LABEL[game.status]}
+                        </span>
+                      </div>
+                      <p className="text-xs text-muted">{formatDateTime(game.startAt)}</p>
+                    </div>
                   </div>
-                  <p className="text-xs text-muted">{formatDateTime(game.startAt)}</p>
-                  <div className="mt-1.5 flex items-center justify-between text-xs">
-                    <span className="font-bold text-accent-strong">
-                      {game.joinedCount}/{game.targetPlayers} players
-                    </span>
-                    <span className="font-mono font-bold text-foreground">
-                      {formatPriceMinor(game.pricePerPlayerMinor, game.currency)}/player
-                    </span>
+
+                  <div className="mt-3.5">
+                    <div className="mb-1.5 flex items-baseline justify-between">
+                      <span className="font-display text-xs font-extrabold text-foreground">
+                        {game.joinedCount}
+                        <span className="font-semibold text-faint">/{game.targetPlayers} players</span>
+                      </span>
+                      <span className="font-display text-xs font-extrabold text-accent-strong">
+                        {formatPriceMinor(game.pricePerPlayerMinor, game.currency)}
+                        <span className="text-[10px] font-semibold text-faint"> /player</span>
+                      </span>
+                    </div>
+                    <div className="relative h-2 overflow-hidden rounded-full bg-surface-2">
+                      <div
+                        className="relative h-full rounded-full bg-gradient-to-r from-accent to-accent-glow shadow-[0_0_10px_1px_var(--accent-glow)]"
+                        style={{ width: `${fillPct}%` }}
+                      />
+                    </div>
                   </div>
-                </div>
-              </Link>
-            </li>
-          ))}
+                </Link>
+              </li>
+            );
+          })}
         </ul>
       )}
     </main>

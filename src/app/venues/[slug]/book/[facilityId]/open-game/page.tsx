@@ -67,7 +67,7 @@ export default async function OrganizeOpenGamePage({ params, searchParams }: Pro
     <main className="mx-auto max-w-2xl px-4 py-6 sm:px-6">
       <Link
         href={`/venues/${slug}/book/${facilityId}`}
-        className="mb-4 inline-flex items-center gap-1 text-xs font-bold text-accent"
+        className="mb-4 inline-flex items-center gap-1 font-display text-xs font-bold text-accent"
       >
         <ChevronLeft className="h-3.5 w-3.5" aria-hidden /> Back to booking
       </Link>
@@ -77,7 +77,7 @@ export default async function OrganizeOpenGamePage({ params, searchParams }: Pro
           <SportIcon code={facility.sportCode} className="h-5 w-5" />
         </span>
         <div className="min-w-0">
-          <h1 className="truncate text-xl font-extrabold tracking-tight text-foreground">
+          <h1 className="truncate font-display text-xl font-extrabold tracking-tight text-foreground">
             Organize an open game
           </h1>
           <p className="flex items-center gap-1 text-xs text-muted">
@@ -111,8 +111,8 @@ export default async function OrganizeOpenGamePage({ params, searchParams }: Pro
               href={`?date=${date}&duration=${d}`}
               className={`rounded-full border px-3 py-1 text-xs font-bold transition-colors ${
                 d === duration
-                  ? 'border-accent bg-accent text-white'
-                  : 'border-line text-muted hover:border-accent'
+                  ? 'border-transparent bg-gradient-to-br from-accent to-accent-strong text-white shadow-accent'
+                  : 'border-line text-muted hover:border-accent hover:text-accent-strong'
               }`}
             >
               {d} min
@@ -126,10 +126,10 @@ export default async function OrganizeOpenGamePage({ params, searchParams }: Pro
           <Link
             key={d}
             href={`?date=${d}&duration=${duration}`}
-            className={`flex-none rounded-xl border px-3 py-1.5 text-xs font-bold transition-colors ${
+            className={`flex-none rounded-xl border px-3 py-1.5 font-display text-xs font-bold transition-colors ${
               d === date
-                ? 'border-accent bg-accent text-white'
-                : 'border-line text-muted hover:border-accent'
+                ? 'border-transparent bg-gradient-to-br from-accent to-accent-strong text-white shadow-accent'
+                : 'border-line text-muted hover:border-accent hover:text-accent-strong'
             }`}
           >
             {formatDateLabel(d)}
@@ -159,13 +159,13 @@ export default async function OrganizeOpenGamePage({ params, searchParams }: Pro
               <Link
                 key={start.toISOString()}
                 href={`?date=${date}&duration=${duration}&startAt=${encodeURIComponent(start.toISOString())}`}
-                className={`focus-visible:outline-accent flex w-full flex-col items-center rounded-xl border px-2 py-2.5 text-center transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 ${
+                className={`focus-visible:outline-accent flex w-full flex-col items-center rounded-xl border px-2 py-2.5 text-center transition-all duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 ${
                   isSelected
-                    ? 'border-accent bg-accent text-white'
-                    : 'border-line bg-surface hover:border-accent hover:bg-accent-wash'
+                    ? 'border-transparent bg-gradient-to-br from-accent to-accent-strong text-white shadow-accent'
+                    : 'border-line bg-surface hover:-translate-y-0.5 hover:border-accent hover:bg-accent-wash'
                 }`}
               >
-                <span className="text-xs font-bold">{formatSlotTime(start, venue.timezone)}</span>
+                <span className="font-display text-xs font-bold">{formatSlotTime(start, venue.timezone)}</span>
                 <span className={`text-[10px] ${isSelected ? 'text-white/80' : 'text-faint'}`}>
                   – {formatSlotTime(end, venue.timezone)}
                 </span>
@@ -257,7 +257,7 @@ export default async function OrganizeOpenGamePage({ params, searchParams }: Pro
           <button
             type="submit"
             title={actor ? 'Create this open game' : 'Sign in to create this open game'}
-            className="focus-visible:outline-accent mt-1 rounded-xl bg-accent px-4 py-2.5 text-sm font-bold text-white transition-colors hover:bg-accent-strong focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+            className="btn-sheen focus-visible:outline-accent mt-1 rounded-xl bg-gradient-to-br from-accent to-accent-strong px-4 py-3 font-display text-sm font-bold text-white shadow-accent transition-transform hover:-translate-y-0.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
           >
             Create open game
           </button>

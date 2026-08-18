@@ -67,3 +67,23 @@ export function formatDateLabel(date: string): string {
     month: 'short',
   }).format(new Date(Date.UTC(y, m - 1, d, 12)));
 }
+
+/** Same 'YYYY-MM-DD' parsing as formatDateLabel, split into weekday +
+ * day-of-month for a two-line calendar chip instead of one compact
+ * string — the customer booking page's clearer date picker. */
+export function formatDayChip(date: string): { weekday: string; day: string } {
+  const [y, m, d] = date.split('-').map(Number);
+  const instant = new Date(Date.UTC(y, m - 1, d, 12));
+  return {
+    weekday: new Intl.DateTimeFormat('en-GB', { weekday: 'short' }).format(instant),
+    day: new Intl.DateTimeFormat('en-GB', { day: 'numeric' }).format(instant),
+  };
+}
+
+/** "August 2026" — the calendar strip's month/year header. */
+export function formatMonthYear(date: string): string {
+  const [y, m, d] = date.split('-').map(Number);
+  return new Intl.DateTimeFormat('en-GB', { month: 'long', year: 'numeric' }).format(
+    new Date(Date.UTC(y, m - 1, d, 12)),
+  );
+}

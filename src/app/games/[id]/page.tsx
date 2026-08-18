@@ -6,7 +6,7 @@ import { getOpenGameById } from '@/domain/open-games/queries';
 import { getSessionActor } from '@/lib/auth/session';
 import { now } from '@/lib/time/now';
 import { formatPriceMinor } from '@/lib/format/money';
-import { OPEN_GAME_STATUS_LABEL, OPEN_GAME_STATUS_TONE } from '@/lib/format/open-game-status';
+import { OPEN_GAME_STATUS_LABEL } from '@/lib/format/open-game-status';
 import { VENUE_REASON_LABEL } from '@/lib/format/booking-status';
 import { SportIcon } from '@/components/sport-icon';
 import { OPEN_GAME_TERMINAL_STATUS, SKILL_LEVEL, VENUE_CANCELLATION_REASON } from '@/lib/config/constants';
@@ -15,13 +15,6 @@ import { joinOpenGameAction, leaveOpenGameAction, organizerCancelOpenGameAction 
 type Props = {
   params: Promise<{ id: string }>;
   searchParams: Promise<{ error?: string; created?: string; joined?: string; left?: string; cancelled?: string }>;
-};
-
-const TONE_CLASS: Record<string, string> = {
-  pending: 'bg-floodlight-wash text-floodlight',
-  positive: 'bg-accent-wash text-accent-strong',
-  negative: 'bg-danger-wash text-danger',
-  neutral: 'bg-surface-2 text-faint',
 };
 
 const JOINABLE_STATUSES = new Set(['FILLING', 'MINIMUM_REACHED']);
@@ -61,39 +54,59 @@ export default async function OpenGameDetailPage({ params, searchParams }: Props
   const canJoin = Boolean(actor && !myPlayer && !isOrganizer && isJoinable);
   const canLeave = Boolean(myPlayer && !isOrganizer && JOINABLE_STATUSES.has(game.status));
   const canOrganizerCancel = isOrganizer && !OPEN_GAME_TERMINAL_STATUS.has(game.status);
+  const fillPct = Math.min(100, Math.round((game.joinedCount / game.targetPlayers) * 100));
+  const isFilling = game.status === 'FILLING' || game.status === 'MINIMUM_REACHED';
 
   return (
     <main className="mx-auto max-w-2xl px-4 py-6 sm:px-6">
       <Link
         href="/games"
-        className="mb-4 inline-flex items-center gap-1 text-xs font-bold text-accent"
+        className="mb-4 inline-flex items-center gap-1 font-display text-xs font-bold text-accent"
       >
         <ChevronLeft className="h-3.5 w-3.5" aria-hidden /> Open games
       </Link>
 
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <span className="flex h-11 w-11 flex-none items-center justify-center rounded-xl bg-accent-wash text-accent-strong">
-            <SportIcon code={game.sportCode} className="h-5 w-5" />
-          </span>
-          <div className="min-w-0">
-            <h1 className="text-xl font-extrabold tracking-tight text-foreground">
-              {game.facilityName}
-            </h1>
-            <Link
-              href={`/venues/${game.venueSlug}`}
-              className="flex items-center gap-1 text-xs text-muted hover:text-accent-strong"
-            >
-              <MapPin className="h-3 w-3 flex-none" aria-hidden />
-              {game.venueName}
-            </Link>
-          </div>
-        </div>
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-accent via-accent-strong to-[#0a1f14] p-6">
         <span
-          className={`flex-none rounded-full px-2.5 py-1 text-[11px] font-bold ${TONE_CLASS[OPEN_GAME_STATUS_TONE[game.status]]}`}
-        >
-          {OPEN_GAME_STATUS_LABEL[game.status]}
-        </span>
+          aria-hidden
+          className="pointer-events-none absolute inset-0 opacity-60"
+          style={{
+            backgroundImage:
+              'repeating-linear-gradient(90deg, rgb(255 255 255 / 0.12) 0, rgb(255 255 255 / 0.12) 1px, transparent 1px, transparent 11px)',
+          }}
+        />
+        <span
+          aria-hidden
+          className="animate-float pointer-events-none absolute -top-10 right-[-20px] h-40 w-40 rounded-full bg-white/20 blur-2xl"
+        />
+        <div className="relative flex items-start justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <span className="flex h-11 w-11 flex-none items-center justify-center rounded-xl bg-white/15 text-white backdrop-blur">
+              <SportIcon code={game.sportCode} className="h-5 w-5" />
+            </span>
+            <div className="min-w-0">
+              <h1 className="font-display text-xl font-extrabold tracking-tight text-white">
+                {game.facilityName}
+              </h1>
+              <Link
+                href={`/venues/${game.venueSlug}`}
+                className="flex items-center gap-1 text-xs text-white/75 hover:text-white"
+              >
+                <MapPin className="h-3 w-3 flex-none" aria-hidden />
+                {game.venueName}
+              </Link>
+            </div>
+          </div>
+          <span
+            className={`flex flex-none items-center gap-1.5 rounded-full bg-white/15 px-2.5 py-1 font-display text-[11px] font-bold text-white backdrop-blur`}
+          >
+            {isFilling ? (
+              <span className="animate-pulse-dot h-1.5 w-1.5 rounded-full bg-white" aria-hidden />
+            ) : null}
+            {OPEN_GAME_STATUS_LABEL[game.status]}
+          </span>
+        </div>
+        <p className="relative mt-1.5 text-xs text-white/75">{formatDateTime(game.startAt)}</p>
       </div>
 
       {sp.error ? (
@@ -125,18 +138,41 @@ export default async function OpenGameDetailPage({ params, searchParams }: Props
         </p>
       ) : null}
 
-      <div className="mt-5 grid grid-cols-2 gap-2.5 sm:grid-cols-4">
-        <Stat label="When" value={formatDateTime(game.startAt)} />
-        <Stat
-          label="Players"
-          value={`${game.joinedCount}/${game.targetPlayers}`}
-          hint={`min ${game.minPlayers}`}
-        />
-        <Stat
-          label="Per player"
-          value={formatPriceMinor(game.pricePerPlayerMinor, game.currency)}
-        />
-        <Stat label="Join by" value={formatDateTime(game.joinCutoffAt)} />
+      <div className="-mt-4 mx-1 rounded-2xl border border-line bg-surface p-4 shadow-md">
+        <div className="grid grid-cols-3 gap-3 text-center">
+          <div>
+            <p className="font-display text-lg font-extrabold text-accent-strong">
+              {game.joinedCount}/{game.targetPlayers}
+            </p>
+            <p className="text-[10px] font-bold tracking-wide text-faint uppercase">Players</p>
+          </div>
+          <div>
+            <p className="font-display text-lg font-extrabold text-foreground">
+              {formatPriceMinor(game.pricePerPlayerMinor, game.currency)}
+            </p>
+            <p className="text-[10px] font-bold tracking-wide text-faint uppercase">Each</p>
+          </div>
+          <div>
+            <p className="font-display text-lg font-extrabold text-foreground">
+              {formatDateTime(game.joinCutoffAt)}
+            </p>
+            <p className="text-[10px] font-bold tracking-wide text-faint uppercase">Join by</p>
+          </div>
+        </div>
+        <div className="mt-4 border-t border-line pt-4">
+          <div className="relative h-2.5 overflow-hidden rounded-full bg-surface-2">
+            <div
+              className="relative h-full rounded-full bg-gradient-to-r from-accent to-accent-glow shadow-[0_0_12px_1px_var(--accent-glow)] transition-all duration-500"
+              style={{ width: `${fillPct}%` }}
+            />
+          </div>
+          <p className="mt-2 text-center text-[11px] text-faint">
+            {game.targetPlayers - game.joinedCount > 0
+              ? `${game.targetPlayers - game.joinedCount} more player${game.targetPlayers - game.joinedCount === 1 ? '' : 's'} locks this game in`
+              : 'Full roster — locked in'}{' '}
+            — released &amp; refunded automatically if it doesn&apos;t fill by the cutoff.
+          </p>
+        </div>
       </div>
 
       {game.status === 'VENUE_CANCELLED' || game.status === 'FAILED_TO_FILL' ? (
@@ -147,20 +183,27 @@ export default async function OpenGameDetailPage({ params, searchParams }: Props
         ) : null
       ) : null}
 
-      <p className="mt-6 text-xs font-bold tracking-wide text-faint uppercase">
+      <p className="mt-6 font-display text-xs font-bold tracking-wide text-faint uppercase">
         Roster — organized by {game.organizerName}
       </p>
       <ul className="mt-2 flex flex-col gap-1.5">
         {game.players.map((player) => (
           <li
             key={player.id}
-            className="flex items-center justify-between rounded-xl border border-line bg-surface px-3 py-2"
+            className="flex items-center justify-between rounded-xl border border-line bg-surface px-3 py-2.5 transition-colors hover:bg-surface-2"
           >
-            <span className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
-              <Users className="h-3.5 w-3.5 flex-none text-faint" aria-hidden />
+            <span className="flex items-center gap-2 text-sm font-semibold text-foreground">
+              <span className="flex h-7 w-7 flex-none items-center justify-center rounded-full bg-gradient-to-br from-accent-glow to-accent-strong font-display text-[10px] font-bold text-white">
+                {player.fullName
+                  .split(' ')
+                  .map((p) => p[0])
+                  .slice(0, 2)
+                  .join('')
+                  .toUpperCase()}
+              </span>
               {player.fullName}
               {player.userId === game.organizerId ? (
-                <span className="rounded-full bg-accent-wash px-1.5 py-0.5 text-[10px] font-bold text-accent-strong">
+                <span className="rounded-full bg-accent-wash px-1.5 py-0.5 font-display text-[10px] font-bold text-accent-strong">
                   Organizer
                 </span>
               ) : null}
@@ -173,16 +216,16 @@ export default async function OpenGameDetailPage({ params, searchParams }: Props
                   : null,
               ]
                 .filter(Boolean)
-                .join(' · ') || '—'}
+                .join(' · ') || <Users className="h-3.5 w-3.5 text-faint" aria-hidden />}
             </span>
           </li>
         ))}
       </ul>
 
       {canJoin ? (
-        <form action={joinOpenGameAction} className="mt-6 rounded-2xl border border-line bg-surface p-4">
+        <form action={joinOpenGameAction} className="mt-6 rounded-2xl border border-line bg-surface p-4 shadow-sm">
           <input type="hidden" name="openGameId" value={game.id} />
-          <p className="mb-3 text-sm font-bold text-foreground">Join this game</p>
+          <p className="mb-3 font-display text-sm font-bold text-foreground">Join this game</p>
           <div className="flex flex-col gap-2.5 sm:flex-row">
             <input
               type="text"
@@ -206,7 +249,7 @@ export default async function OpenGameDetailPage({ params, searchParams }: Props
           </div>
           <button
             type="submit"
-            className="focus-visible:outline-accent mt-3 w-full rounded-xl bg-accent px-4 py-2.5 text-sm font-bold text-white transition-colors hover:bg-accent-strong focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+            className="btn-sheen focus-visible:outline-accent mt-3 w-full rounded-xl bg-gradient-to-br from-accent to-accent-strong px-4 py-3 font-display text-sm font-bold text-white shadow-accent transition-transform hover:-translate-y-0.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
           >
             Join and authorize {formatPriceMinor(game.pricePerPlayerMinor, game.currency)}
           </button>
@@ -217,7 +260,7 @@ export default async function OpenGameDetailPage({ params, searchParams }: Props
       ) : !actor && isJoinable ? (
         <Link
           href={`/sign-in?next=${encodeURIComponent(`/games/${game.id}`)}`}
-          className="focus-visible:outline-accent mt-6 block w-full rounded-xl bg-accent px-4 py-2.5 text-center text-sm font-bold text-white transition-colors hover:bg-accent-strong focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+          className="btn-sheen focus-visible:outline-accent mt-6 block w-full rounded-xl bg-gradient-to-br from-accent to-accent-strong px-4 py-3 text-center font-display text-sm font-bold text-white shadow-accent transition-transform hover:-translate-y-0.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
         >
           Sign in to join this game
         </Link>
@@ -229,7 +272,7 @@ export default async function OpenGameDetailPage({ params, searchParams }: Props
           <input type="hidden" name="openGameId" value={game.id} />
           <button
             type="submit"
-            className="focus-visible:outline-accent rounded-lg border border-line px-3 py-1.5 text-xs font-bold text-danger transition-colors hover:border-danger hover:bg-danger-wash focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+            className="focus-visible:outline-accent rounded-lg border border-line px-3 py-1.5 font-display text-xs font-bold text-danger transition-colors hover:border-danger hover:bg-danger-wash focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
           >
             Leave this game
           </button>
@@ -239,10 +282,10 @@ export default async function OpenGameDetailPage({ params, searchParams }: Props
       {canOrganizerCancel ? (
         <form
           action={organizerCancelOpenGameAction}
-          className="mt-6 rounded-2xl border border-line bg-surface p-4"
+          className="mt-6 rounded-2xl border border-line bg-surface p-4 shadow-sm"
         >
           <input type="hidden" name="openGameId" value={game.id} />
-          <p className="mb-3 text-sm font-bold text-foreground">Cancel this game</p>
+          <p className="mb-3 font-display text-sm font-bold text-foreground">Cancel this game</p>
           <div className="flex flex-col gap-2.5 sm:flex-row">
             <select
               name="reason"
@@ -261,7 +304,7 @@ export default async function OpenGameDetailPage({ params, searchParams }: Props
             </select>
             <button
               type="submit"
-              className="focus-visible:outline-accent rounded-xl border border-danger px-4 py-2 text-sm font-bold text-danger transition-colors hover:bg-danger-wash focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+              className="focus-visible:outline-accent rounded-xl border border-danger px-4 py-2 font-display text-sm font-bold text-danger transition-colors hover:bg-danger-wash focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
             >
               Cancel game
             </button>
@@ -272,15 +315,5 @@ export default async function OpenGameDetailPage({ params, searchParams }: Props
         </form>
       ) : null}
     </main>
-  );
-}
-
-function Stat({ label, value, hint }: { label: string; value: string; hint?: string }) {
-  return (
-    <div className="rounded-xl border border-line bg-surface p-2.5">
-      <p className="text-[10px] font-bold tracking-wide text-faint uppercase">{label}</p>
-      <p className="text-sm font-bold text-foreground">{value}</p>
-      {hint ? <p className="text-[10px] text-faint">{hint}</p> : null}
-    </div>
   );
 }

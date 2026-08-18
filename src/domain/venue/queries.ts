@@ -34,6 +34,66 @@ export interface VenueSummary {
   currency: string | null;
 }
 
+export interface SportCategory {
+  code: string;
+  displayName: string;
+  venueCount: number;
+}
+
+/** Sports actually offered by at least one active facility at an ACTIVE
+ * venue, with a real venue count each — the home page's "browse by
+ * sport" cards. Never a fixed/fabricated list: a sport with zero live
+ * venues just doesn't appear. */
+export async function listSportCategories(): Promise<SportCategory[]> {
+  const db = getDb();
+  const rows = await db
+    .select({
+      sportCode: sports.code,
+      sportDisplayName: sports.displayName,
+      venueId: venues.id,
+    })
+    .from(facilities)
+    .innerJoin(sports, eq(facilities.sportId, sports.id))
+    .innerJoin(venues, eq(facilities.venueId, venues.id))
+    .where(and(eq(facilities.isActive, true), eq(venues.status, 'ACTIVE')));
+
+  const byCode = new Map<string, { displayName: string; venueIds: Set<string> }>();
+  for (const row of rows) {
+    const entry = byCode.get(row.sportCode) ?? {
+      displayName: row.sportDisplayName,
+      venueIds: new Set<string>(),
+    };
+    entry.venueIds.add(row.venueId);
+    byCode.set(row.sportCode, entry);
+  }
+
+  return Array.from(byCode.entries())
+    .map(([code, { displayName, venueIds }]) => ({ code, displayName, venueCount: venueIds.size }))
+    .sort((a, b) => b.venueCount - a.venueCount);
+}
+
+export interface AreaCategory {
+  /** A venue's district, falling back to its city when no district is
+   * set — never a separate "Cairo the country" concept, just the most
+   * specific real location string each venue actually has. */
+  name: string;
+  venueCount: number;
+}
+
+/** Real districts/cities at least one ACTIVE venue is in, with counts —
+ * the home page's "browse by area" cards. */
+export async function listAreaCategories(): Promise<AreaCategory[]> {
+  const activeVenues = await listActiveVenues();
+  const counts = new Map<string, number>();
+  for (const venue of activeVenues) {
+    const area = venue.district ?? venue.city;
+    counts.set(area, (counts.get(area) ?? 0) + 1);
+  }
+  return Array.from(counts.entries())
+    .map(([name, venueCount]) => ({ name, venueCount }))
+    .sort((a, b) => b.venueCount - a.venueCount);
+}
+
 /** Venue list plus just enough facility summary for a browse-page card.
  * One query per venue is fine at MVP scale (same N+1-is-fine-for-now
  * reasoning as the venue detail page's per-facility availability calls);
