@@ -8,13 +8,17 @@
  * can't rely on globals.css or the app's normal components. Without a
  * custom one, a crashed root layout falls back to Next's bare default
  * error UI — this gives users something on-brand instead.
+ *
+ * `retry` (not `reset`) since v16.3.0 — it re-fetches and re-renders the
+ * boundary's children instead of just clearing error state. See this
+ * file's doc comment link, "Version History".
  */
 export default function GlobalError({
   error,
-  reset,
+  retry,
 }: {
   error: Error & { digest?: string };
-  reset: () => void;
+  retry: () => void;
 }) {
   return (
     <html lang="en">
@@ -45,7 +49,7 @@ export default function GlobalError({
             </p>
           ) : null}
           <button
-            onClick={() => reset()}
+            onClick={() => retry()}
             style={{
               background: '#22c55e',
               color: '#052e16',
