@@ -42,6 +42,7 @@ import {
   releaseBookingPayment,
 } from '@/domain/payments/service';
 import { recordAuditLog } from '@/domain/audit/log';
+import { handleOpenGameBookingCascade } from '@/domain/open-games/booking-cascade';
 
 const EVENT_TYPE_BY_TARGET: Record<BookingStatus, string> = {
   REQUESTED: 'BOOKING_REQUESTED',
@@ -265,14 +266,27 @@ export async function transitionBooking(params: TransitionBookingParams): Promis
   // Best-effort — never throws, never blocks the transition. See
   // src/domain/payments/service.ts's doc comment (ADR-007: capture on
   // confirm, release on reject/expire, partial refund on a customer
-  // cancelling a confirmed booking).
-  if (params.targetStatus === 'CONFIRMED') {
-    await captureBookingPayment(updated);
-  } else if (params.targetStatus === 'REJECTED' || params.targetStatus === 'EXPIRED') {
-    await releaseBookingPayment(updated);
-  } else if (isCustomerCancellingConfirmed) {
-    await refundBookingCancellationPayment(updated);
+  // cancelling a confirmed booking). Skipped for OPEN_GAME-source
+  // bookings — there is no single booking-level payment for those, only
+  // per-player ones (ADR-011), handled by src/domain/open-games instead.
+  if (updated.source !== 'OPEN_GAME') {
+    if (params.targetStatus === 'CONFIRMED') {
+      await captureBookingPayment(updated);
+    } else if (params.targetStatus === 'REJECTED' || params.targetStatus === 'EXPIRED') {
+      await releaseBookingPayment(updated);
+    } else if (isCustomerCancellingConfirmed) {
+      await refundBookingCancellationPayment(updated);
+    }
   }
+
+  // Best-effort — never throws, never blocks the transition. Keeps an
+  // open game's status in sync when something other than
+  // src/domain/open-games itself changed the underlying booking (venue
+  // confirm/reject via the dashboard, the expiry cron, a human
+  // cancelling a hold) — see booking-cascade.ts's doc comment.
+  await handleOpenGameBookingCascade(updated, params.reason).catch((err) =>
+    console.error(`[open-games] cascade failed for booking ${updated.id}:`, err),
+  );
 
   return updated;
 }

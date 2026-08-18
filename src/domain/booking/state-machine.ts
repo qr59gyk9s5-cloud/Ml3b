@@ -44,7 +44,16 @@ const TRANSITIONS: BookingTransitionRule[] = [
   { from: 'REQUESTED', to: 'EXPIRED', allow: isSystemActor },
   { from: 'REQUESTED', to: 'CANCELLED_BY_CUSTOMER', allow: isBookingOwner },
   { from: 'CONFIRMED', to: 'CANCELLED_BY_CUSTOMER', allow: isBookingOwner },
-  { from: 'CONFIRMED', to: 'CANCELLED_BY_VENUE', allow: isVenueStaffForBooking },
+  // isSystemActor here is ADR-011's open-games cutoff job cancelling a
+  // CONFIRMED booking that never reached its minimum roster — reasoned
+  // as closer to a venue-side cancellation (nobody chose this, the slot
+  // just doesn't happen) than a customer one. Reason is always the
+  // fixed INSUFFICIENT_PLAYERS in that case, enforced by the caller.
+  {
+    from: 'CONFIRMED',
+    to: 'CANCELLED_BY_VENUE',
+    allow: (ctx) => isVenueStaffForBooking(ctx) || isSystemActor(ctx),
+  },
   {
     from: 'CONFIRMED',
     to: 'COMPLETED',

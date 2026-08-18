@@ -3,6 +3,8 @@
  * request, capture on confirm, release on reject/expire, partial refund
  * on a customer cancelling a confirmed booking. Called from
  * src/domain/booking/create-request.ts and src/domain/booking/transition.ts.
+ * The bottom of this file has the same shape for open games' per-player
+ * payments (ADR-011) — called from src/domain/open-games instead.
  *
  * Every function here is best-effort and never throws back into its
  * caller — same contract as src/domain/notifications/outbox.ts's
@@ -33,7 +35,7 @@
  */
 import { eq } from 'drizzle-orm';
 import { getDb } from '@/lib/db/client';
-import { payments, type Booking, type Payment } from '@/lib/db/schema';
+import { payments, type Booking, type OpenGamePlayer, type Payment } from '@/lib/db/schema';
 import { CANCELLATION_REFUND_RATE } from '@/lib/config/constants';
 import { getPaymentProvider, isPaymentProviderConfigured } from '@/lib/payments';
 
@@ -43,6 +45,16 @@ async function findPaymentForBooking(bookingId: string): Promise<Payment | undef
     .select()
     .from(payments)
     .where(eq(payments.bookingId, bookingId))
+    .orderBy(payments.createdAt);
+  return payment;
+}
+
+async function findPaymentForOpenGamePlayer(openGamePlayerId: string): Promise<Payment | undefined> {
+  const db = getDb();
+  const [payment] = await db
+    .select()
+    .from(payments)
+    .where(eq(payments.openGamePlayerId, openGamePlayerId))
     .orderBy(payments.createdAt);
   return payment;
 }
@@ -201,5 +213,146 @@ export async function refundBookingCancellationPayment(booking: Booking): Promis
     }
   } catch (err) {
     console.error(`[payments] unexpected error refunding payment for booking ${booking.id}:`, err);
+  }
+}
+
+/**
+ * ADR-011's per-player payment lifecycle — same authorize/capture/
+ * release contract as the booking-level functions above (best-effort,
+ * no-op when unconfigured, never throws), just keyed by
+ * open_game_player_id instead of booking_id. Uses booking.id as the
+ * PaymentProvider's `bookingId` reference field for now (the interface
+ * doesn't have a separate concept — the real per-player identity lives
+ * in payments.open_game_player_id, not in what's sent to the provider).
+ */
+export async function authorizePaymentForOpenGamePlayer(
+  player: OpenGamePlayer,
+  bookingId: string,
+  amountMinor: number,
+  currency: string,
+): Promise<void> {
+  if (!isPaymentProviderConfigured()) {
+    console.log(
+      `[payments] no provider configured — skipping authorize for open game player ${player.id}`,
+    );
+    return;
+  }
+
+  const db = getDb();
+  try {
+    const provider = getPaymentProvider();
+    const result = await provider.authorize({
+      bookingId,
+      amountMinor,
+      currency,
+      customerName: null,
+      customerPhone: null,
+    });
+    await db.insert(payments).values({
+      openGamePlayerId: player.id,
+      provider: 'fawry',
+      providerRef: result.providerRef,
+      status: 'AUTHORIZED',
+      amountMinor,
+      currency,
+      authorizedAt: new Date(),
+    });
+  } catch (err) {
+    console.error(`[payments] authorize failed for open game player ${player.id}:`, err);
+    await db
+      .insert(payments)
+      .values({
+        openGamePlayerId: player.id,
+        provider: 'fawry',
+        status: 'FAILED',
+        amountMinor,
+        currency,
+      })
+      .catch((insertErr) =>
+        console.error(
+          `[payments] failed to record FAILED authorize for open game player ${player.id}:`,
+          insertErr,
+        ),
+      );
+  }
+}
+
+export async function captureOpenGamePlayerPayment(player: OpenGamePlayer): Promise<void> {
+  if (!isPaymentProviderConfigured()) {
+    console.log(
+      `[payments] no provider configured — skipping capture for open game player ${player.id}`,
+    );
+    return;
+  }
+
+  try {
+    const payment = await findPaymentForOpenGamePlayer(player.id);
+    if (!payment || payment.status !== 'AUTHORIZED' || !payment.providerRef) {
+      console.error(
+        `[payments] no capturable AUTHORIZED payment found for open game player ${player.id} — skipping capture`,
+      );
+      return;
+    }
+
+    const db = getDb();
+    const provider = getPaymentProvider();
+    try {
+      await provider.capture(payment.providerRef);
+      await db
+        .update(payments)
+        .set({ status: 'CAPTURED', capturedAt: new Date(), updatedAt: new Date() })
+        .where(eq(payments.id, payment.id));
+    } catch (err) {
+      console.error(`[payments] capture failed for open game player ${player.id}:`, err);
+      await db
+        .update(payments)
+        .set({ status: 'FAILED', updatedAt: new Date() })
+        .where(eq(payments.id, payment.id));
+    }
+  } catch (err) {
+    console.error(
+      `[payments] unexpected error capturing payment for open game player ${player.id}:`,
+      err,
+    );
+  }
+}
+
+export async function releaseOpenGamePlayerPayment(player: OpenGamePlayer): Promise<void> {
+  if (!isPaymentProviderConfigured()) {
+    console.log(
+      `[payments] no provider configured — skipping release for open game player ${player.id}`,
+    );
+    return;
+  }
+
+  try {
+    const payment = await findPaymentForOpenGamePlayer(player.id);
+    if (!payment || payment.status !== 'AUTHORIZED' || !payment.providerRef) {
+      console.error(
+        `[payments] no releasable AUTHORIZED payment found for open game player ${player.id} — skipping release`,
+      );
+      return;
+    }
+
+    const db = getDb();
+    const provider = getPaymentProvider();
+    try {
+      await provider.release(payment.providerRef);
+      await db
+        .update(payments)
+        .set({ status: 'RELEASED', updatedAt: new Date() })
+        .where(eq(payments.id, payment.id));
+    } catch (err) {
+      console.error(`[payments] release failed for open game player ${player.id}:`, err);
+      await db
+        .update(payments)
+        .set({ status: 'FAILED', updatedAt: new Date() })
+        .where(eq(payments.id, payment.id));
+    }
+  } catch (err) {
+    console.error(
+      `[payments] unexpected error releasing payment for open game player ${player.id}:`,
+      err,
+    );
   }
 }
