@@ -22,7 +22,7 @@ type Props = {
   searchParams: Promise<{ date?: string; duration?: string; error?: string }>;
 };
 
-export const metadata: Metadata = { title: 'Add a walk-in booking — Sports Venue Marketplace' };
+export const metadata: Metadata = { title: 'Add a walk-in booking' };
 
 export default async function ManualBookingPage({ params, searchParams }: Props) {
   const { venueId, facilityId } = await params;

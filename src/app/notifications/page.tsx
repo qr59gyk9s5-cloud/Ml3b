@@ -8,7 +8,7 @@ import { NOTIFICATION_EVENT_LABEL } from '@/lib/format/notification-label';
 import type { NotificationEventType } from '@/lib/config/constants';
 import { markAllNotificationsReadAction, markNotificationReadAction } from './actions';
 
-export const metadata: Metadata = { title: 'Notifications — Sports Venue Marketplace' };
+export const metadata: Metadata = { title: 'Notifications' };
 
 function formatRelativeTime(date: Date): string {
   const diffMs = Date.now() - date.getTime();

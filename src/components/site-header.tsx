@@ -16,8 +16,7 @@ export async function SiteHeader() {
             🏟️
           </span>
           <span className="text-[15px] font-extrabold tracking-tight whitespace-nowrap text-foreground">
-            <span className="sm:hidden">SVM</span>
-            <span className="hidden sm:inline">Sports Venue Marketplace</span>
+            PlayCairo
           </span>
         </Link>
 

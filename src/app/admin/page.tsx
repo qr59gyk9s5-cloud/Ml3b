@@ -5,7 +5,7 @@ import { AlertTriangle, CheckCircle2, MailWarning, SendHorizontal } from 'lucide
 import { getSessionActor } from '@/lib/auth/session';
 import { getSystemHealthSummary } from '@/domain/admin/queries';
 
-export const metadata: Metadata = { title: 'Admin — Overview — Sports Venue Marketplace' };
+export const metadata: Metadata = { title: 'Admin — Overview' };
 
 export default async function AdminOverviewPage() {
   const actor = await getSessionActor();

@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 
-export const metadata: Metadata = { title: 'Check your email — Sports Venue Marketplace' };
+export const metadata: Metadata = { title: 'Check your email' };
 
 export default function CheckEmailPage() {
   return (

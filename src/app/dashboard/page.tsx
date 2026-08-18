@@ -5,7 +5,7 @@ import { ChevronRight, LayoutDashboard } from 'lucide-react';
 import { getSessionActor } from '@/lib/auth/session';
 import { listStaffVenuesForUser } from '@/domain/venue/staff-queries';
 
-export const metadata: Metadata = { title: 'Venue dashboard — Sports Venue Marketplace' };
+export const metadata: Metadata = { title: 'Venue dashboard' };
 
 export default async function DashboardPage() {
   const actor = await getSessionActor();

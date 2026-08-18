@@ -5,7 +5,7 @@ import { getSessionActor } from '@/lib/auth/session';
 import { findUserByEmail } from '@/domain/admin/users';
 import { suspendUserAction, unsuspendUserAction } from './actions';
 
-export const metadata: Metadata = { title: 'Admin — Users — Sports Venue Marketplace' };
+export const metadata: Metadata = { title: 'Admin — Users' };
 
 type Props = { searchParams: Promise<{ email?: string; error?: string; done?: string }> };
 

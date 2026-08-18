@@ -6,7 +6,7 @@ import { formatPriceMinor } from '@/lib/format/money';
 import { OPEN_GAME_STATUS_LABEL, OPEN_GAME_STATUS_TONE } from '@/lib/format/open-game-status';
 import { SportIcon } from '@/components/sport-icon';
 
-export const metadata: Metadata = { title: 'Open games — Sports Venue Marketplace' };
+export const metadata: Metadata = { title: 'Open games' };
 
 const TONE_CLASS: Record<string, string> = {
   pending: 'bg-floodlight-wash text-floodlight',

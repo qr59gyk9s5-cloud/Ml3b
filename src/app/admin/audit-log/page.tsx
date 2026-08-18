@@ -4,7 +4,7 @@ import { ScrollText } from 'lucide-react';
 import { getSessionActor } from '@/lib/auth/session';
 import { listAuditLogs } from '@/domain/admin/queries';
 
-export const metadata: Metadata = { title: 'Admin — Audit log — Sports Venue Marketplace' };
+export const metadata: Metadata = { title: 'Admin — Audit log' };
 
 type Props = { searchParams: Promise<{ resourceType?: string }> };
 

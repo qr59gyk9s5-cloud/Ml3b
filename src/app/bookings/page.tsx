@@ -15,7 +15,7 @@ import { formatPriceMinor } from '@/lib/format/money';
 import { generateBookingQrDataUrl } from '@/lib/format/qr-code';
 import { cancelBookingAction } from './actions';
 
-export const metadata: Metadata = { title: 'My bookings — Sports Venue Marketplace' };
+export const metadata: Metadata = { title: 'My bookings' };
 
 type Props = {
   searchParams: Promise<{ error?: string; cancelled?: string; requested?: string }>;

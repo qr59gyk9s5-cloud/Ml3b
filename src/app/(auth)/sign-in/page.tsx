@@ -4,7 +4,7 @@ import { SignInForm } from '@/components/auth/sign-in-form';
 import { OAuthButtons } from '@/components/auth/oauth-buttons';
 import { isSupabaseConfigured } from '@/lib/auth/server';
 
-export const metadata: Metadata = { title: 'Sign in — Sports Venue Marketplace' };
+export const metadata: Metadata = { title: 'Sign in' };
 
 type Props = {
   searchParams: Promise<{ next?: string }>;

@@ -5,7 +5,7 @@ import { getSessionActor } from '@/lib/auth/session';
 import { listPlatformAdmins } from '@/domain/admin/users';
 import { grantAdminAction, revokeAdminAction } from './actions';
 
-export const metadata: Metadata = { title: 'Admin — Admins — Sports Venue Marketplace' };
+export const metadata: Metadata = { title: 'Admin — Admins' };
 
 type Props = { searchParams: Promise<{ error?: string; done?: string }> };
 

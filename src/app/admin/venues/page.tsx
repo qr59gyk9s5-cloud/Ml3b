@@ -12,7 +12,7 @@ import {
   suspendVenueAction,
 } from './actions';
 
-export const metadata: Metadata = { title: 'Admin — Venues — Sports Venue Marketplace' };
+export const metadata: Metadata = { title: 'Admin — Venues' };
 
 type Props = { searchParams: Promise<{ error?: string; done?: string }> };
 

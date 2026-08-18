@@ -4,7 +4,7 @@ import { SignUpForm } from '@/components/auth/sign-up-form';
 import { OAuthButtons } from '@/components/auth/oauth-buttons';
 import { isSupabaseConfigured } from '@/lib/auth/server';
 
-export const metadata: Metadata = { title: 'Create account — Sports Venue Marketplace' };
+export const metadata: Metadata = { title: 'Create account' };
 
 export default function SignUpPage() {
   const configured = isSupabaseConfigured();

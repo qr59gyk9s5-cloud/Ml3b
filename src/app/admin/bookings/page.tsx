@@ -10,7 +10,7 @@ import { CUSTOMER_STATUS_LABEL } from '@/lib/format/booking-status';
 import { formatPriceMinor } from '@/lib/format/money';
 import { overrideBookingAction } from './actions';
 
-export const metadata: Metadata = { title: 'Admin — Bookings — Sports Venue Marketplace' };
+export const metadata: Metadata = { title: 'Admin — Bookings' };
 
 type Props = { searchParams: Promise<{ ref?: string; error?: string; done?: string }> };
 

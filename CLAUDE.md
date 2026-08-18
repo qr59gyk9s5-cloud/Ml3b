@@ -1,6 +1,6 @@
 @AGENTS.md
 
-# Sports Venue Booking Marketplace — CLAUDE.md
+# PlayCairo — CLAUDE.md
 
 Operational guide for any Claude Code session working in this repo. This is
 a real business, not a demo — booking correctness and security outrank

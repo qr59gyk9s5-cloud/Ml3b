@@ -18,8 +18,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'Sports Venue Booking Marketplace',
-  description: 'Find and book sports facilities near you.',
+  title: { default: 'PlayCairo', template: '%s — PlayCairo' },
+  description: 'Find and book sports facilities in Cairo — pitches, courts, and open games.',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

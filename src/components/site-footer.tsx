@@ -6,7 +6,7 @@ export function SiteFooter() {
           <span aria-hidden className="text-sm">
             🏟️
           </span>
-          <span className="text-xs font-bold text-foreground">Sports Venue Marketplace</span>
+          <span className="text-xs font-bold text-foreground">PlayCairo</span>
         </div>
         <p className="text-xs text-faint">
           Cairo, Egypt — pitches and courts, request-to-book, confirmed by the venue.
