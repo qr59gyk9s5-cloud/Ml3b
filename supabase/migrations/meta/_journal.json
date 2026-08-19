@@ -113,6 +113,20 @@
       "when": 1787036711615,
       "tag": "0015_open_games_rls",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1787137791061,
+      "tag": "0016_open_game_cancelled_after_confirmed",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1787138038299,
+      "tag": "0017_venue_open_game_settings",
+      "breakpoints": true
     }
   ]
 }

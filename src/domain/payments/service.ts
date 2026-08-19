@@ -49,7 +49,9 @@ async function findPaymentForBooking(bookingId: string): Promise<Payment | undef
   return payment;
 }
 
-async function findPaymentForOpenGamePlayer(openGamePlayerId: string): Promise<Payment | undefined> {
+async function findPaymentForOpenGamePlayer(
+  openGamePlayerId: string,
+): Promise<Payment | undefined> {
   const db = getDb();
   const [payment] = await db
     .select()
@@ -312,6 +314,58 @@ export async function captureOpenGamePlayerPayment(player: OpenGamePlayer): Prom
   } catch (err) {
     console.error(
       `[payments] unexpected error capturing payment for open game player ${player.id}:`,
+      err,
+    );
+  }
+}
+
+/** Founder-specified policy (docs/architecture/open-games.md's previously-
+ * flagged gap): a full refund, not a percentage split like
+ * refundBookingCancellationPayment's CANCELLATION_REFUND_RATE — open
+ * games are binary (refunded or not) based on cutoff/impact, decided by
+ * the caller (src/domain/open-games/join.ts, finalize.ts) before this is
+ * called. Same dormant-until-configured contract as every function in
+ * this file — see the file's own doc comment. */
+export async function refundOpenGamePlayerPayment(player: OpenGamePlayer): Promise<void> {
+  if (!isPaymentProviderConfigured()) {
+    console.log(
+      `[payments] no provider configured — skipping refund for open game player ${player.id}`,
+    );
+    return;
+  }
+
+  try {
+    const payment = await findPaymentForOpenGamePlayer(player.id);
+    if (!payment || payment.status !== 'CAPTURED' || !payment.providerRef) {
+      console.error(
+        `[payments] no refundable CAPTURED payment found for open game player ${player.id} — skipping refund`,
+      );
+      return;
+    }
+
+    const db = getDb();
+    const provider = getPaymentProvider();
+    try {
+      await provider.refund(payment.providerRef, payment.amountMinor);
+      await db
+        .update(payments)
+        .set({
+          status: 'REFUNDED',
+          refundedAt: new Date(),
+          refundAmountMinor: payment.amountMinor,
+          updatedAt: new Date(),
+        })
+        .where(eq(payments.id, payment.id));
+    } catch (err) {
+      console.error(`[payments] refund failed for open game player ${player.id}:`, err);
+      await db
+        .update(payments)
+        .set({ status: 'FAILED', updatedAt: new Date() })
+        .where(eq(payments.id, payment.id));
+    }
+  } catch (err) {
+    console.error(
+      `[payments] unexpected error refunding payment for open game player ${player.id}:`,
       err,
     );
   }

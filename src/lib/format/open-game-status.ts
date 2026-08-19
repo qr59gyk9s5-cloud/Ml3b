@@ -14,6 +14,7 @@ export const OPEN_GAME_STATUS_LABEL: Record<OpenGameStatus, string> = {
   FAILED_TO_FILL: "Didn't fill in time",
   ORGANIZER_CANCELLED: 'Cancelled by organizer',
   VENUE_CANCELLED: 'Cancelled by venue',
+  CANCELLED_AFTER_CONFIRMED: 'Cancelled',
 };
 
 export const OPEN_GAME_STATUS_TONE: Record<OpenGameStatus, StatusTone> = {
@@ -25,4 +26,5 @@ export const OPEN_GAME_STATUS_TONE: Record<OpenGameStatus, StatusTone> = {
   FAILED_TO_FILL: 'negative',
   ORGANIZER_CANCELLED: 'neutral',
   VENUE_CANCELLED: 'negative',
+  CANCELLED_AFTER_CONFIRMED: 'negative',
 };

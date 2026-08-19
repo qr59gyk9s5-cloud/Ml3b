@@ -4,7 +4,15 @@
  * exists in Phase 2 because venue_members needs a real FK target, and its
  * columns are just data, not business logic. See docs/architecture/database.md.
  */
-import { doublePrecision, index, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
+import {
+  doublePrecision,
+  index,
+  integer,
+  pgTable,
+  text,
+  timestamp,
+  uuid,
+} from 'drizzle-orm/pg-core';
 import { venueStatusEnum } from './enums';
 import { profiles } from './profiles';
 
@@ -24,6 +32,15 @@ export const venues = pgTable(
     longitude: doublePrecision('longitude'),
     timezone: text('timezone').notNull().default('Africa/Cairo'),
     coverPhotoUrl: text('cover_photo_url'),
+    // Per-venue override of OPEN_GAME_MIN_LEAD_TIME_HOURS /
+    // OPEN_GAME_MAX_HOLD_HOURS (src/lib/config/constants.ts) — null means
+    // "use the platform default," never a magic sentinel number.
+    // Previously flagged as an MVP simplification in
+    // docs/architecture/open-games.md; the founder explicitly floated
+    // per-venue configurability, this makes it real. See
+    // src/domain/open-games/create-open-game.ts's effectiveOpenGameLimits.
+    openGameMinLeadTimeHours: integer('open_game_min_lead_time_hours'),
+    openGameMaxHoldHours: integer('open_game_max_hold_hours'),
     createdBy: uuid('created_by')
       .notNull()
       .references(() => profiles.id),

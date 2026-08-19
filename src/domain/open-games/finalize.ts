@@ -25,15 +25,16 @@
  * cancellation this module already handled. Don't reorder without
  * re-reading booking-cascade.ts.
  */
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import { getDb } from '@/lib/db/client';
-import { bookings, openGamePlayers, openGames, type OpenGame } from '@/lib/db/schema';
+import { bookings, openGamePlayers, openGames, payments, type OpenGame } from '@/lib/db/schema';
 import { DomainError } from '@/domain/errors';
 import { isTerminalBookingStatus } from '@/domain/booking/state-machine';
 import { transitionBooking } from '@/domain/booking/transition';
 import type { VenueCancellationReason } from '@/lib/config/constants';
 import {
   captureOpenGamePlayerPayment,
+  refundOpenGamePlayerPayment,
   releaseOpenGamePlayerPayment,
 } from '@/domain/payments/service';
 
@@ -84,10 +85,7 @@ export async function finalizeOpenGame(openGameId: string): Promise<OpenGame> {
 }
 
 export type OpenGameCancelStatus =
-  | 'VENUE_REJECTED'
-  | 'FAILED_TO_FILL'
-  | 'ORGANIZER_CANCELLED'
-  | 'VENUE_CANCELLED';
+  'VENUE_REJECTED' | 'FAILED_TO_FILL' | 'ORGANIZER_CANCELLED' | 'VENUE_CANCELLED';
 
 export async function cancelOpenGame(
   openGameId: string,
@@ -136,6 +134,72 @@ export async function cancelOpenGame(
         reason,
       });
     }
+  }
+
+  return updated;
+}
+
+/**
+ * Cancelling an already-CONFIRMED game — founder-specified policy
+ * (previously the flagged gap in docs/architecture/open-games.md): every
+ * player with a CAPTURED payment gets refunded (not released, since the
+ * money was actually taken by then), including a player whose own leaving
+ * is *why* this is being called (see join.ts's leaveOpenGame — it flips
+ * that player to LEFT before calling this, so getCapturedPlayers below
+ * still finds their payment).
+ *
+ * Two distinct callers, same mechanics:
+ *   - join.ts: a player's departure drops the roster below minPlayers —
+ *     the game can no longer be played as configured.
+ *   - organizer-actions.ts: the organizer calls the whole thing off.
+ * Both already checked eligibility (the CANCELLATION_CUTOFF_HOURS window)
+ * before calling this — same "mechanical work, not the authorization
+ * decision" split as cancelOpenGame above.
+ */
+async function getCapturedPlayers(openGameId: string) {
+  const db = getDb();
+  const rows = await db
+    .select({ player: openGamePlayers })
+    .from(openGamePlayers)
+    .innerJoin(payments, eq(payments.openGamePlayerId, openGamePlayers.id))
+    .where(and(eq(openGamePlayers.openGameId, openGameId), eq(payments.status, 'CAPTURED')));
+  return rows.map((r) => r.player);
+}
+
+export async function cancelConfirmedOpenGame(
+  openGameId: string,
+  reason: VenueCancellationReason,
+): Promise<OpenGame> {
+  const db = getDb();
+  const [openGame] = await db.select().from(openGames).where(eq(openGames.id, openGameId));
+  if (!openGame) {
+    throw new DomainError('NOT_FOUND', 'Open game not found.');
+  }
+  if (openGame.status !== 'CONFIRMED') {
+    throw new DomainError(
+      'INVALID_TRANSITION',
+      `A confirmed-game cancellation cannot run from status ${openGame.status}.`,
+    );
+  }
+
+  for (const player of await getCapturedPlayers(openGameId)) {
+    await refundOpenGamePlayerPayment(player);
+  }
+
+  const [updated] = await db
+    .update(openGames)
+    .set({ status: 'CANCELLED_AFTER_CONFIRMED', cancelledReason: reason, updatedAt: new Date() })
+    .where(eq(openGames.id, openGameId))
+    .returning();
+
+  const [booking] = await db.select().from(bookings).where(eq(bookings.id, openGame.bookingId));
+  if (booking && !isTerminalBookingStatus(booking.status)) {
+    await transitionBooking({
+      bookingId: openGame.bookingId,
+      targetStatus: 'CANCELLED_BY_VENUE',
+      actor: OPEN_GAMES_SYSTEM_ACTOR,
+      reason,
+    });
   }
 
   return updated;

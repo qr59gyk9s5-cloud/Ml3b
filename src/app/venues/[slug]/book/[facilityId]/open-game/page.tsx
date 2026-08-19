@@ -45,6 +45,13 @@ export default async function OrganizeOpenGamePage({ params, searchParams }: Pro
   const today = todayInTimeZone(venue.timezone);
   const date = sp.date && /^\d{4}-\d{2}-\d{2}$/.test(sp.date) ? sp.date : today;
 
+  // Per-venue override if set (dashboard → Settings → Open games), else
+  // the platform default — same fallback create-open-game.ts's server
+  // action actually validates against, so this display can't drift from
+  // what the form will actually accept.
+  const minLeadTimeHours = venue.openGameMinLeadTimeHours ?? OPEN_GAME_MIN_LEAD_TIME_HOURS;
+  const maxHoldHours = venue.openGameMaxHoldHours ?? OPEN_GAME_MAX_HOLD_HOURS;
+
   const durationOptions = computeDurationOptions(facility);
   const requestedDuration = sp.duration ? Number(sp.duration) : durationOptions[0];
   const duration = durationOptions.includes(requestedDuration)
@@ -88,9 +95,9 @@ export default async function OrganizeOpenGamePage({ params, searchParams }: Pro
       </div>
 
       <p className="mt-3 rounded-xl bg-surface-2 px-3 py-2.5 text-xs text-muted">
-        You&apos;ll join as player #1 and authorize your own share right away. Other players can join
-        once the venue accepts the slot; if the roster doesn&apos;t reach the minimum by your join
-        cutoff, everyone (including you) is released and nobody is charged.
+        You&apos;ll join as player #1 and authorize your own share right away. Other players can
+        join once the venue accepts the slot; if the roster doesn&apos;t reach the minimum by your
+        join cutoff, everyone (including you) is released and nobody is charged.
       </p>
 
       {sp.error ? (
@@ -165,7 +172,9 @@ export default async function OrganizeOpenGamePage({ params, searchParams }: Pro
                     : 'border-line bg-surface hover:-translate-y-0.5 hover:border-accent hover:bg-accent-wash'
                 }`}
               >
-                <span className="font-display text-xs font-bold">{formatSlotTime(start, venue.timezone)}</span>
+                <span className="font-display text-xs font-bold">
+                  {formatSlotTime(start, venue.timezone)}
+                </span>
                 <span className={`text-[10px] ${isSelected ? 'text-white/80' : 'text-faint'}`}>
                   – {formatSlotTime(end, venue.timezone)}
                 </span>
@@ -249,9 +258,9 @@ export default async function OrganizeOpenGamePage({ params, searchParams }: Pro
           </label>
 
           <p className="text-[11px] text-faint">
-            Games can only be created at least {OPEN_GAME_MIN_LEAD_TIME_HOURS}h before kickoff, and
-            the join cutoff can be at most {OPEN_GAME_MAX_HOLD_HOURS}h from now — a venue can&apos;t
-            hold a slot indefinitely.
+            Games can only be created at least {minLeadTimeHours}h before kickoff, and the join
+            cutoff can be at most {maxHoldHours}h from now — a venue can&apos;t hold a slot
+            indefinitely.
           </p>
 
           <button

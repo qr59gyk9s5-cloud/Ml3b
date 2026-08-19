@@ -1,0 +1,1 @@
+ALTER TYPE "public"."open_game_status" ADD VALUE 'CANCELLED_AFTER_CONFIRMED';

@@ -96,6 +96,14 @@ export default async function VenueDashboardPage({ params, searchParams }: Props
             </p>
           </div>
         </div>
+        {ctx.isPlatformAdmin || ctx.venueRole === 'OWNER' || ctx.venueRole === 'MANAGER' ? (
+          <Link
+            href={`/dashboard/${venueId}/settings`}
+            className="focus-visible:outline-accent rounded-lg border border-line px-3 py-1.5 text-xs font-bold text-muted transition-colors hover:border-accent hover:text-accent-strong focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+          >
+            Settings
+          </Link>
+        ) : null}
       </div>
 
       {sp.error ? (

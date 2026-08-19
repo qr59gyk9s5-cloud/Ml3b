@@ -80,14 +80,10 @@ export async function joinOpenGameAction(formData: FormData) {
   const skillLevelRaw = String(formData.get('skillLevel') ?? '');
 
   try {
-    await joinOpenGame(
-      { userId: actor.userId },
-      openGameId,
-      {
-        position: positionRaw.length > 0 ? positionRaw : undefined,
-        skillLevel: skillLevelRaw.length > 0 ? (skillLevelRaw as SkillLevel) : undefined,
-      },
-    );
+    await joinOpenGame({ userId: actor.userId }, openGameId, {
+      position: positionRaw.length > 0 ? positionRaw : undefined,
+      skillLevel: skillLevelRaw.length > 0 ? (skillLevelRaw as SkillLevel) : undefined,
+    });
   } catch (err) {
     redirect(`${gamePath}?error=${encodeURIComponent(errorMessage(err))}`);
   }
@@ -105,15 +101,22 @@ export async function leaveOpenGameAction(formData: FormData) {
 
   if (!actor) redirect(`/sign-in?next=${encodeURIComponent(gamePath)}`);
 
+  let outcome: string;
   try {
-    await leaveOpenGame({ openGamePlayerId, actor: { userId: actor.userId } });
+    const result = await leaveOpenGame({ openGamePlayerId, actor: { userId: actor.userId } });
+    outcome = result.outcome;
   } catch (err) {
     redirect(`${gamePath}?error=${encodeURIComponent(errorMessage(err))}`);
   }
 
   revalidatePath(gamePath);
   revalidatePath('/games');
-  redirect(`${gamePath}?left=1`);
+  // outcome tells the page which of four different messages to show —
+  // "released" (pre-confirm hold) reads very differently from
+  // "forfeited" (captured payment, past the cancellation cutoff) or
+  // "game_cancelled" (this departure dropped the roster below minimum,
+  // so everyone — not just this player — got refunded).
+  redirect(`${gamePath}?left=1&outcome=${outcome}`);
 }
 
 export async function organizerCancelOpenGameAction(formData: FormData) {
@@ -125,17 +128,22 @@ export async function organizerCancelOpenGameAction(formData: FormData) {
 
   const reason = String(formData.get('reason') ?? '');
 
+  let refunded = false;
   try {
-    await organizerCancelOpenGame(
+    const updated = await organizerCancelOpenGame(
       { userId: actor.userId, isPlatformAdmin: actor.isPlatformAdmin },
       openGameId,
       { reason: reason as VenueCancellationReason },
     );
+    // A CONFIRMED game's payments were CAPTURED, not just held — everyone
+    // gets refunded, not just released. See finalize.ts's
+    // cancelConfirmedOpenGame vs cancelOpenGame.
+    refunded = updated.status === 'CANCELLED_AFTER_CONFIRMED';
   } catch (err) {
     redirect(`${gamePath}?error=${encodeURIComponent(errorMessage(err))}`);
   }
 
   revalidatePath(gamePath);
   revalidatePath('/games');
-  redirect(`${gamePath}?cancelled=1`);
+  redirect(`${gamePath}?cancelled=1${refunded ? '&refunded=1' : ''}`);
 }

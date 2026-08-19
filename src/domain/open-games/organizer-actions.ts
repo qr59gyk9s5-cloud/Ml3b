@@ -1,18 +1,20 @@
 /**
  * The organizer's own controls over their open game — calling it off
- * before it's resolved one way or another. See
- * docs/architecture/open-games.md's known gap: cancelling an
- * already-CONFIRMED game (roster locked, payments captured) isn't
- * built — this only covers AWAITING_VENUE/FILLING/MINIMUM_REACHED,
- * where every held payment is still just an authorization, nothing
- * captured yet.
+ * before it's resolved one way or another. Founder-specified policy
+ * (previously docs/architecture/open-games.md's flagged gap): cancelling
+ * an already-CONFIRMED game (roster locked, per-player payments
+ * captured) is now supported too, subject to the same
+ * CANCELLATION_CUTOFF_HOURS window as a player leaving one
+ * (join.ts's leaveConfirmedOpenGame) — too close to kickoff and it's the
+ * admin console's booking override instead, not a self-service cancel.
  */
 import { eq } from 'drizzle-orm';
 import { getDb } from '@/lib/db/client';
-import { openGames, type OpenGame } from '@/lib/db/schema';
+import { bookings, openGames, type OpenGame } from '@/lib/db/schema';
 import { DomainError } from '@/domain/errors';
+import { CANCELLATION_CUTOFF_HOURS } from '@/lib/config/constants';
 import { cancelOpenGameSchema, type CancelOpenGameInput } from '@/lib/validation/open-game';
-import { cancelOpenGame } from './finalize';
+import { cancelConfirmedOpenGame, cancelOpenGame } from './finalize';
 
 export interface OrganizerActor {
   userId: string | null;
@@ -30,7 +32,10 @@ export async function organizerCancelOpenGame(
 
   const parsed = cancelOpenGameSchema.safeParse(rawInput);
   if (!parsed.success) {
-    throw new DomainError('VALIDATION_FAILED', parsed.error.issues[0]?.message ?? 'A reason is required.');
+    throw new DomainError(
+      'VALIDATION_FAILED',
+      parsed.error.issues[0]?.message ?? 'A reason is required.',
+    );
   }
 
   const db = getDb();
@@ -40,6 +45,22 @@ export async function organizerCancelOpenGame(
   }
   if (openGame.organizerId !== actor.userId && !actor.isPlatformAdmin) {
     throw new DomainError('FORBIDDEN', 'Only the organizer can cancel this game.');
+  }
+
+  if (openGame.status === 'CONFIRMED') {
+    const [booking] = await db.select().from(bookings).where(eq(bookings.id, openGame.bookingId));
+    if (!booking) {
+      throw new DomainError('NOT_FOUND', 'The underlying booking for this game is missing.');
+    }
+    const cutoffPassed =
+      booking.startAt.getTime() - Date.now() <= CANCELLATION_CUTOFF_HOURS * 60 * 60_000;
+    if (cutoffPassed) {
+      throw new DomainError(
+        'INVALID_TRANSITION',
+        `Too close to kickoff to cancel yourself — within ${CANCELLATION_CUTOFF_HOURS}h of start, contact the venue or platform admin.`,
+      );
+    }
+    return cancelConfirmedOpenGame(openGameId, parsed.data.reason);
   }
 
   return cancelOpenGame(openGameId, 'ORGANIZER_CANCELLED', parsed.data.reason);

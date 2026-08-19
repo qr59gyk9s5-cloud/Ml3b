@@ -164,16 +164,23 @@ export const OPEN_GAME_STATUS = [
   'FAILED_TO_FILL',
   'ORGANIZER_CANCELLED',
   'VENUE_CANCELLED',
+  // Founder-specified policy (previously flagged as an open gap in
+  // docs/architecture/open-games.md): a CONFIRMED game — roster locked
+  // in, per-player payments captured — can still be cancelled. CONFIRMED
+  // is no longer terminal because of this; see OPEN_GAME_TERMINAL_STATUS
+  // below and src/domain/open-games/finalize.ts's cancelConfirmedOpenGame.
+  'CANCELLED_AFTER_CONFIRMED',
 ] as const;
 export type OpenGameStatus = (typeof OPEN_GAME_STATUS)[number];
 
-/** Terminal — an open game past one of these never transitions again. */
+/** Terminal — an open game past one of these never transitions again.
+ * CONFIRMED is deliberately NOT here — see the status list's comment. */
 export const OPEN_GAME_TERMINAL_STATUS: ReadonlySet<OpenGameStatus> = new Set([
-  'CONFIRMED',
   'VENUE_REJECTED',
   'FAILED_TO_FILL',
   'ORGANIZER_CANCELLED',
   'VENUE_CANCELLED',
+  'CANCELLED_AFTER_CONFIRMED',
 ]);
 
 /** How long a venue's provisional accept holds the slot before it must

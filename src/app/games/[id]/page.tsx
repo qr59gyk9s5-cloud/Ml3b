@@ -9,12 +9,25 @@ import { formatPriceMinor } from '@/lib/format/money';
 import { OPEN_GAME_STATUS_LABEL } from '@/lib/format/open-game-status';
 import { VENUE_REASON_LABEL } from '@/lib/format/booking-status';
 import { SportIcon } from '@/components/sport-icon';
-import { OPEN_GAME_TERMINAL_STATUS, SKILL_LEVEL, VENUE_CANCELLATION_REASON } from '@/lib/config/constants';
+import {
+  CANCELLATION_CUTOFF_HOURS,
+  OPEN_GAME_TERMINAL_STATUS,
+  SKILL_LEVEL,
+  VENUE_CANCELLATION_REASON,
+} from '@/lib/config/constants';
 import { joinOpenGameAction, leaveOpenGameAction, organizerCancelOpenGameAction } from '../actions';
 
 type Props = {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ error?: string; created?: string; joined?: string; left?: string; cancelled?: string }>;
+  searchParams: Promise<{
+    error?: string;
+    created?: string;
+    joined?: string;
+    left?: string;
+    outcome?: string;
+    cancelled?: string;
+    refunded?: string;
+  }>;
 };
 
 const JOINABLE_STATUSES = new Set(['FILLING', 'MINIMUM_REACHED']);
@@ -50,10 +63,22 @@ export default async function OpenGameDetailPage({ params, searchParams }: Props
   const myPlayer = actor ? game.players.find((p) => p.userId === actor.userId) : undefined;
   const cutoffPassed = game.joinCutoffAt.getTime() <= now();
   const isJoinable = JOINABLE_STATUSES.has(game.status) && !cutoffPassed;
+  // Founder-specified policy: a CONFIRMED game can still be left/cancelled
+  // up until CANCELLATION_CUTOFF_HOURS before kickoff — same window
+  // regular booking cancellation uses. See src/domain/open-games/join.ts's
+  // leaveConfirmedOpenGame.
+  const confirmedCancelCutoffPassed =
+    game.startAt.getTime() - now() <= CANCELLATION_CUTOFF_HOURS * 60 * 60_000;
+  const canCancelConfirmed = game.status === 'CONFIRMED' && !confirmedCancelCutoffPassed;
 
   const canJoin = Boolean(actor && !myPlayer && !isOrganizer && isJoinable);
-  const canLeave = Boolean(myPlayer && !isOrganizer && JOINABLE_STATUSES.has(game.status));
-  const canOrganizerCancel = isOrganizer && !OPEN_GAME_TERMINAL_STATUS.has(game.status);
+  const canLeave = Boolean(
+    myPlayer && !isOrganizer && (JOINABLE_STATUSES.has(game.status) || canCancelConfirmed),
+  );
+  const canOrganizerCancel =
+    isOrganizer &&
+    !OPEN_GAME_TERMINAL_STATUS.has(game.status) &&
+    (game.status !== 'CONFIRMED' || canCancelConfirmed);
   const fillPct = Math.min(100, Math.round((game.joinedCount / game.targetPlayers) * 100));
   const isFilling = game.status === 'FILLING' || game.status === 'MINIMUM_REACHED';
 
@@ -129,12 +154,20 @@ export default async function OpenGameDetailPage({ params, searchParams }: Props
       ) : null}
       {sp.left ? (
         <p className="mt-4 rounded-xl bg-surface-2 px-3 py-2.5 text-sm font-medium text-muted">
-          You left this game — your hold was released.
+          {sp.outcome === 'refunded'
+            ? 'You left this game — your payment was refunded.'
+            : sp.outcome === 'forfeited'
+              ? `You left this game — too close to kickoff (within ${CANCELLATION_CUTOFF_HOURS}h) for a refund.`
+              : sp.outcome === 'game_cancelled'
+                ? 'You left, and it dropped the roster below the minimum — the game was cancelled and everyone was refunded.'
+                : 'You left this game — your hold was released.'}
         </p>
       ) : null}
       {sp.cancelled ? (
         <p className="mt-4 rounded-xl bg-surface-2 px-3 py-2.5 text-sm font-medium text-muted">
-          Game cancelled — every held payment was released.
+          {sp.refunded
+            ? 'Game cancelled — every captured payment was refunded.'
+            : 'Game cancelled — every held payment was released.'}
         </p>
       ) : null}
 
@@ -175,7 +208,9 @@ export default async function OpenGameDetailPage({ params, searchParams }: Props
         </div>
       </div>
 
-      {game.status === 'VENUE_CANCELLED' || game.status === 'FAILED_TO_FILL' ? (
+      {game.status === 'VENUE_CANCELLED' ||
+      game.status === 'FAILED_TO_FILL' ||
+      game.status === 'CANCELLED_AFTER_CONFIRMED' ? (
         game.cancelledReason ? (
           <p className="mt-3 text-xs text-danger">
             Reason: {VENUE_REASON_LABEL[game.cancelledReason]}
@@ -223,7 +258,10 @@ export default async function OpenGameDetailPage({ params, searchParams }: Props
       </ul>
 
       {canJoin ? (
-        <form action={joinOpenGameAction} className="mt-6 rounded-2xl border border-line bg-surface p-4 shadow-sm">
+        <form
+          action={joinOpenGameAction}
+          className="mt-6 rounded-2xl border border-line bg-surface p-4 shadow-sm"
+        >
           <input type="hidden" name="openGameId" value={game.id} />
           <p className="mb-3 font-display text-sm font-bold text-foreground">Join this game</p>
           <div className="flex flex-col gap-2.5 sm:flex-row">
@@ -276,6 +314,13 @@ export default async function OpenGameDetailPage({ params, searchParams }: Props
           >
             Leave this game
           </button>
+          {game.status === 'CONFIRMED' ? (
+            <p className="mt-1.5 text-[11px] text-faint">
+              Refunded if it&apos;s more than {CANCELLATION_CUTOFF_HOURS}h before kickoff and the
+              roster still meets the minimum without you — otherwise everyone gets refunded if you
+              leaving drops it below minimum, or you forfeit if it&apos;s too close to start.
+            </p>
+          ) : null}
         </form>
       ) : null}
 
@@ -310,7 +355,9 @@ export default async function OpenGameDetailPage({ params, searchParams }: Props
             </button>
           </div>
           <p className="mt-2 text-[11px] text-faint">
-            Every player&apos;s held payment (including yours) is released — nobody is charged.
+            {game.status === 'CONFIRMED'
+              ? "Every player's captured payment (including yours) is refunded."
+              : "Every player's held payment (including yours) is released — nobody is charged."}
           </p>
         </form>
       ) : null}

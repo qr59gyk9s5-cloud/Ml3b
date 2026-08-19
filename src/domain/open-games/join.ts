@@ -8,16 +8,18 @@
  */
 import { and, eq } from 'drizzle-orm';
 import { getDb } from '@/lib/db/client';
-import { openGamePlayers, openGames, type OpenGamePlayer } from '@/lib/db/schema';
+import { bookings, openGamePlayers, openGames, type OpenGamePlayer } from '@/lib/db/schema';
 import { isUniqueViolation } from '@/lib/db/errors';
 import { DomainError } from '@/domain/errors';
 import { isUserSuspended } from '@/domain/admin/suspension';
 import {
   authorizePaymentForOpenGamePlayer,
+  refundOpenGamePlayerPayment,
   releaseOpenGamePlayerPayment,
 } from '@/domain/payments/service';
 import { joinOpenGameSchema, type JoinOpenGameInput } from '@/lib/validation/open-game';
-import { finalizeOpenGame } from './finalize';
+import { CANCELLATION_CUTOFF_HOURS } from '@/lib/config/constants';
+import { cancelConfirmedOpenGame, finalizeOpenGame } from './finalize';
 
 export interface OpenGamePlayerActor {
   userId: string | null;
@@ -131,7 +133,18 @@ export interface LeaveOpenGameParams {
   actor: OpenGamePlayerActor;
 }
 
-export async function leaveOpenGame(params: LeaveOpenGameParams): Promise<OpenGamePlayer> {
+/** What actually happened to the leaving player's money — the caller
+ * (games/actions.ts) uses this to show the right message; nothing here
+ * is guessable from just the returned player row (LEFT looks the same
+ * whether refunded or not). */
+export type LeaveOpenGameOutcome = 'released' | 'refunded' | 'forfeited' | 'game_cancelled';
+
+export interface LeaveOpenGameResult {
+  player: OpenGamePlayer;
+  outcome: LeaveOpenGameOutcome;
+}
+
+export async function leaveOpenGame(params: LeaveOpenGameParams): Promise<LeaveOpenGameResult> {
   if (!params.actor.userId) {
     throw new DomainError('FORBIDDEN', 'Sign in to leave a game.');
   }
@@ -152,7 +165,15 @@ export async function leaveOpenGame(params: LeaveOpenGameParams): Promise<OpenGa
   }
 
   const [openGame] = await db.select().from(openGames).where(eq(openGames.id, player.openGameId));
-  if (!openGame || !JOINABLE_STATUSES.has(openGame.status)) {
+  if (!openGame) {
+    throw new DomainError('NOT_FOUND', 'Open game not found.');
+  }
+
+  if (openGame.status === 'CONFIRMED') {
+    return leaveConfirmedOpenGame(openGame.id, player);
+  }
+
+  if (!JOINABLE_STATUSES.has(openGame.status)) {
     throw new DomainError(
       'INVALID_TRANSITION',
       'This game has already been finalized or cancelled — contact the organizer.',
@@ -165,8 +186,59 @@ export async function leaveOpenGame(params: LeaveOpenGameParams): Promise<OpenGa
     .where(eq(openGamePlayers.id, player.id))
     .returning();
 
-  // Best-effort — never throws, never blocks.
+  // Best-effort — never throws, never blocks. Only ever an AUTHORIZED
+  // hold at this point (finalizeOpenGame — the only path to CONFIRMED —
+  // is what captures payments; we already branched away from that above).
   await releaseOpenGamePlayerPayment(player);
 
-  return updated;
+  return { player: updated, outcome: 'released' };
+}
+
+/**
+ * Leaving a CONFIRMED game — founder-specified policy:
+ *   - Within CANCELLATION_CUTOFF_HOURS of kickoff: forfeited, no
+ *     exceptions. Too late for the venue/other players to adjust.
+ *   - Otherwise, if this player leaving drops the roster below
+ *     minPlayers (the game can no longer be played as configured): the
+ *     whole game cancels, everyone refunded — see
+ *     finalize.ts's cancelConfirmedOpenGame.
+ *   - Otherwise (roster still meets minPlayers without them): just this
+ *     player is refunded, the game continues for the rest.
+ */
+async function leaveConfirmedOpenGame(
+  openGameId: string,
+  player: OpenGamePlayer,
+): Promise<LeaveOpenGameResult> {
+  const db = getDb();
+  const [openGame] = await db.select().from(openGames).where(eq(openGames.id, openGameId));
+  if (!openGame) {
+    throw new DomainError('NOT_FOUND', 'Open game not found.');
+  }
+
+  const [booking] = await db.select().from(bookings).where(eq(bookings.id, openGame.bookingId));
+  if (!booking) {
+    throw new DomainError('NOT_FOUND', 'The underlying booking for this game is missing.');
+  }
+  const cutoffPassed =
+    booking.startAt.getTime() - Date.now() <= CANCELLATION_CUTOFF_HOURS * 60 * 60_000;
+
+  const [updated] = await db
+    .update(openGamePlayers)
+    .set({ status: 'LEFT', leftAt: new Date(), updatedAt: new Date() })
+    .where(eq(openGamePlayers.id, player.id))
+    .returning();
+
+  if (cutoffPassed) {
+    return { player: updated, outcome: 'forfeited' };
+  }
+
+  const remainingJoined = await countJoinedPlayers(openGameId);
+  if (remainingJoined < openGame.minPlayers) {
+    await cancelConfirmedOpenGame(openGameId, 'INSUFFICIENT_PLAYERS');
+    return { player: updated, outcome: 'game_cancelled' };
+  }
+
+  // Best-effort — never throws, never blocks.
+  await refundOpenGamePlayerPayment(updated);
+  return { player: updated, outcome: 'refunded' };
 }

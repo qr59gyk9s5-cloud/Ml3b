@@ -70,8 +70,8 @@ without also committing their own share (ADR-011's Revision).
 
 ## State machine
 
-`open_games.status`, not a new booking status. The venue's *acceptance*
-of the slot and the game's *financial confirmation* are different events
+`open_games.status`, not a new booking status. The venue's _acceptance_
+of the slot and the game's _financial confirmation_ are different events
 — this is the core change from the first build (see ADR-011's Revision):
 
 - **AWAITING_VENUE** — underlying booking is `REQUESTED`; the organizer
@@ -126,7 +126,7 @@ booking CANCELLED_BY_VENUE, open_games FILLING/MINIMUM_REACHED
 
 The automatic below-minimum-at-cutoff and organizer-cancel paths go the
 other direction — `src/domain/open-games/finalize.ts`'s `cancelOpenGame`
-updates `open_games.status` to its terminal target *first*, then calls
+updates `open_games.status` to its terminal target _first_, then calls
 `transitionBooking` to cancel the underlying booking. That ordering is
 deliberate: it's what stops the generic cascade hook above from
 double-processing a cancellation `cancelOpenGame` itself triggered — by
@@ -211,16 +211,22 @@ ADR-011's Revision and Known gaps.
   same-day-at-worst backup, not a promise of resolving a cutoff the
   moment it passes. Needs a real infra decision (paid cron tier or a
   third-party scheduler), not a silent choice.
-- **Cancelling an already-`CONFIRMED` open game** (organizer or a
-  player wants out after the roster locked in and payments captured)
-  is not built yet — the single-payer 50%-refund policy
-  (`CANCELLATION_REFUND_RATE`) doesn't map cleanly onto N separately-
-  captured player payments, and the founder hasn't specified the
-  multi-party policy (does one player leaving refund just them, or
-  can the whole game be cancelled and everyone refunded?). Handle via
-  the admin console's booking override for now if it comes up for
-  real; a real per-player cancellation policy is a follow-up decision,
-  not a silently-picked one.
+- ~~Cancelling an already-`CONFIRMED` open game~~ — **built.**
+  Founder-specified policy (not a silently-picked one): a player leaving
+  within `CANCELLATION_CUTOFF_HOURS` of kickoff forfeits, no exceptions.
+  Outside that window, if their leaving drops the roster below
+  `minPlayers` the game can no longer be played as configured — the
+  whole game cancels and _everyone_ (including the player who left) is
+  refunded. If the roster still clears `minPlayers` without them, only
+  they are refunded and the game continues. The organizer has the same
+  option (cancel the whole thing, same cutoff, everyone refunded) —
+  see `src/domain/open-games/join.ts`'s `leaveConfirmedOpenGame` and
+  `finalize.ts`'s `cancelConfirmedOpenGame`. New terminal status
+  `CANCELLED_AFTER_CONFIRMED`, since `CONFIRMED` is no longer itself
+  terminal (0016 migration). Refund execution follows the exact same
+  dormant-until-a-real-provider-is-configured discipline as
+  `refundBookingCancellationPayment` — see `src/domain/payments/
+service.ts`'s file-level doc comment.
 - **`OPEN_GAME_MAX_HOLD_HOURS`/`OPEN_GAME_MIN_LEAD_TIME_HOURS` are fixed
   constants, not per-venue settings.** The founder explicitly floated
   venue-configurable hold duration/lead time and accepted fixed

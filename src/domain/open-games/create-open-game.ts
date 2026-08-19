@@ -23,10 +23,7 @@ import {
 } from '@/lib/db/schema';
 import { isUniqueViolation } from '@/lib/db/errors';
 import { DomainError } from '@/domain/errors';
-import {
-  OPEN_GAME_MAX_HOLD_HOURS,
-  OPEN_GAME_MIN_LEAD_TIME_HOURS,
-} from '@/lib/config/constants';
+import { OPEN_GAME_MAX_HOLD_HOURS, OPEN_GAME_MIN_LEAD_TIME_HOURS } from '@/lib/config/constants';
 import { assertSpanIsAvailable } from '@/domain/booking/availability-check';
 import { computeBookingPricing } from '@/domain/booking/pricing';
 import { generateBookingReference } from '@/domain/booking/reference';
@@ -103,26 +100,27 @@ export async function createOpenGame(
   }
 
   if (input.joinCutoffAt.getTime() >= input.startAt.getTime()) {
-    throw new DomainError(
-      'VALIDATION_FAILED',
-      'The join cutoff must be before the game starts.',
-    );
+    throw new DomainError('VALIDATION_FAILED', 'The join cutoff must be before the game starts.');
   }
   if (input.joinCutoffAt.getTime() <= Date.now()) {
     throw new DomainError('VALIDATION_FAILED', 'The join cutoff must be in the future.');
   }
-  // Global MVP constants, not yet a per-venue setting — see
-  // docs/architecture/open-games.md.
-  if (input.startAt.getTime() - Date.now() < OPEN_GAME_MIN_LEAD_TIME_HOURS * HOUR_MS) {
+  // Per-venue override if the venue set one (Settings → Open games on
+  // their dashboard), else the platform default — see venues.ts's doc
+  // comment on openGameMinLeadTimeHours/openGameMaxHoldHours. Previously
+  // fixed platform-wide constants; now a real per-venue setting.
+  const minLeadTimeHours = venue.openGameMinLeadTimeHours ?? OPEN_GAME_MIN_LEAD_TIME_HOURS;
+  const maxHoldHours = venue.openGameMaxHoldHours ?? OPEN_GAME_MAX_HOLD_HOURS;
+  if (input.startAt.getTime() - Date.now() < minLeadTimeHours * HOUR_MS) {
     throw new DomainError(
       'VALIDATION_FAILED',
-      `An open game must be created at least ${OPEN_GAME_MIN_LEAD_TIME_HOURS} hours before it starts.`,
+      `An open game must be created at least ${minLeadTimeHours} hours before it starts.`,
     );
   }
-  if (input.joinCutoffAt.getTime() - Date.now() > OPEN_GAME_MAX_HOLD_HOURS * HOUR_MS) {
+  if (input.joinCutoffAt.getTime() - Date.now() > maxHoldHours * HOUR_MS) {
     throw new DomainError(
       'VALIDATION_FAILED',
-      `The join cutoff can be at most ${OPEN_GAME_MAX_HOLD_HOURS} hours from now — a venue can't hold a slot indefinitely.`,
+      `The join cutoff can be at most ${maxHoldHours} hours from now — a venue can't hold a slot indefinitely.`,
     );
   }
 

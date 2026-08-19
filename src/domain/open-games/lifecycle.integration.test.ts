@@ -27,7 +27,11 @@ async function setUpBookableFacility(overrides: { basePriceMinor?: number } = {}
   // Every day, 00:00-23:00 — avoids day-of-week fragility (see this
   // file's doc comment) while still respecting the compute-slots model.
   for (let dayOfWeek = 0; dayOfWeek < 7; dayOfWeek++) {
-    await createTestAvailabilityRule(facility.id, { dayOfWeek, startTime: '00:00', endTime: '23:00' });
+    await createTestAvailabilityRule(facility.id, {
+      dayOfWeek,
+      startTime: '00:00',
+      endTime: '23:00',
+    });
   }
   return { owner, venue, facility };
 }
@@ -224,7 +228,10 @@ describe('open games lifecycle (DB-backed)', () => {
     it('reaching the target finalizes immediately (captures every joined player)', async () => {
       const { owner, facility } = await setUpBookableFacility();
       const organizer = await createTestUser('Organizer');
-      const openGame = await createGame(organizer.id, facility.id, { targetPlayers: 2, minPlayers: 2 });
+      const openGame = await createGame(organizer.id, facility.id, {
+        targetPlayers: 2,
+        minPlayers: 2,
+      });
       await confirmUnderlyingBooking(openGame.id, owner.id);
 
       const player2 = await createTestUser('Player 2');
@@ -281,7 +288,10 @@ describe('open games lifecycle (DB-backed)', () => {
       // the thing that protects against that exact race — gets tested.
       const { owner, facility } = await setUpBookableFacility();
       const organizer = await createTestUser('Organizer');
-      const openGame = await createGame(organizer.id, facility.id, { targetPlayers: 2, minPlayers: 2 });
+      const openGame = await createGame(organizer.id, facility.id, {
+        targetPlayers: 2,
+        minPlayers: 2,
+      });
       await confirmUnderlyingBooking(openGame.id, owner.id);
       const player2 = await createTestUser('Player 2');
       await insertPlayerDirectly(openGame.id, player2.id);
@@ -295,7 +305,10 @@ describe('open games lifecycle (DB-backed)', () => {
     it('refuses joining twice', async () => {
       const { owner, facility } = await setUpBookableFacility();
       const organizer = await createTestUser('Organizer');
-      const openGame = await createGame(organizer.id, facility.id, { targetPlayers: 5, minPlayers: 2 });
+      const openGame = await createGame(organizer.id, facility.id, {
+        targetPlayers: 5,
+        minPlayers: 2,
+      });
       await confirmUnderlyingBooking(openGame.id, owner.id);
       const player2 = await createTestUser('Player 2');
       await joinOpenGame({ userId: player2.id }, openGame.id, {});
@@ -310,19 +323,29 @@ describe('open games lifecycle (DB-backed)', () => {
     it('lets a player leave while FILLING, releasing their hold', async () => {
       const { owner, facility } = await setUpBookableFacility();
       const organizer = await createTestUser('Organizer');
-      const openGame = await createGame(organizer.id, facility.id, { targetPlayers: 5, minPlayers: 2 });
+      const openGame = await createGame(organizer.id, facility.id, {
+        targetPlayers: 5,
+        minPlayers: 2,
+      });
       await confirmUnderlyingBooking(openGame.id, owner.id);
       const player2 = await createTestUser('Player 2');
       const joined = await joinOpenGame({ userId: player2.id }, openGame.id, {});
 
-      const left = await leaveOpenGame({ openGamePlayerId: joined.id, actor: { userId: player2.id } });
-      expect(left.status).toBe('LEFT');
+      const left = await leaveOpenGame({
+        openGamePlayerId: joined.id,
+        actor: { userId: player2.id },
+      });
+      expect(left.player.status).toBe('LEFT');
+      expect(left.outcome).toBe('released');
     });
 
     it('refuses leaving on someone else’s behalf', async () => {
       const { owner, facility } = await setUpBookableFacility();
       const organizer = await createTestUser('Organizer');
-      const openGame = await createGame(organizer.id, facility.id, { targetPlayers: 5, minPlayers: 2 });
+      const openGame = await createGame(organizer.id, facility.id, {
+        targetPlayers: 5,
+        minPlayers: 2,
+      });
       await confirmUnderlyingBooking(openGame.id, owner.id);
       const player2 = await createTestUser('Player 2');
       const joined = await joinOpenGame({ userId: player2.id }, openGame.id, {});
@@ -338,7 +361,10 @@ describe('open games lifecycle (DB-backed)', () => {
     it('cancels a FILLING game, releasing every held payment', async () => {
       const { owner, facility } = await setUpBookableFacility();
       const organizer = await createTestUser('Organizer');
-      const openGame = await createGame(organizer.id, facility.id, { targetPlayers: 5, minPlayers: 2 });
+      const openGame = await createGame(organizer.id, facility.id, {
+        targetPlayers: 5,
+        minPlayers: 2,
+      });
       await confirmUnderlyingBooking(openGame.id, owner.id);
 
       const updated = await organizerCancelOpenGame({ userId: organizer.id }, openGame.id, {
