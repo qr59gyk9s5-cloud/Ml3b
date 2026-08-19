@@ -19,6 +19,16 @@ export async function GET(request: Request) {
     if (!error) {
       return NextResponse.redirect(`${origin}${next}`);
     }
+    // Logged, not swallowed — this was previously silent, making every
+    // OAuth failure a black box (no way to tell "PKCE verifier missing"
+    // from "code already used" from anything else without this). Never
+    // logs the code/verifier itself, just Supabase's own error shape.
+    console.error('[auth/callback] exchangeCodeForSession failed:', {
+      name: error.name,
+      status: error.status,
+      code: error.code,
+      message: error.message,
+    });
   }
 
   return NextResponse.redirect(`${origin}/sign-in?error=auth_callback_failed`);
