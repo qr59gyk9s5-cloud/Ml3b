@@ -89,8 +89,7 @@
   --font-mono: var(--font-geist-mono);
   /* Not theme-switched (same in light/dark) — literal values here rather
    * than round-tripped through :root, unlike the colors above. */
-  --shadow-sm:
-    0 1px 2px oklch(21% 0.03 155 / 0.06), 0 1px 1px oklch(21% 0.03 155 / 0.04);
+  --shadow-sm: 0 1px 2px oklch(21% 0.03 155 / 0.06), 0 1px 1px oklch(21% 0.03 155 / 0.04);
   --shadow-md: 0 10px 28px oklch(21% 0.03 155 / 0.1);
   --shadow-lg: 0 24px 56px oklch(21% 0.03 155 / 0.16);
   --shadow-accent: 0 14px 30px oklch(45% 0.14 155 / 0.32);
@@ -216,7 +215,12 @@ body {
   }
 }
 .animate-shimmer {
-  background: linear-gradient(90deg, var(--surface-2) 25%, var(--surface) 50%, var(--surface-2) 75%);
+  background: linear-gradient(
+    90deg,
+    var(--surface-2) 25%,
+    var(--surface) 50%,
+    var(--surface-2) 75%
+  );
   background-size: 200% 100%;
   animation: shimmerSweep 1.6s ease-in-out infinite;
 }

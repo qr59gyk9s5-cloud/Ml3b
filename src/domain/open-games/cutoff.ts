@@ -36,7 +36,10 @@ export async function resolveOpenGamesPastCutoff(
     .select({ id: openGames.id })
     .from(openGames)
     .where(
-      and(inArray(openGames.status, ['FILLING', 'MINIMUM_REACHED']), lte(openGames.joinCutoffAt, now)),
+      and(
+        inArray(openGames.status, ['FILLING', 'MINIMUM_REACHED']),
+        lte(openGames.joinCutoffAt, now),
+      ),
     );
 
   let finalizedCount = 0;

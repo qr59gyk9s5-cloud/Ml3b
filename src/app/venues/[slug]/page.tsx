@@ -97,7 +97,11 @@ export default async function VenuePage({ params }: Props) {
                     ? 'Fully booked today'
                     : `${openCount} of ${todaySlots.length} slots open today`;
               return (
-                <li key={facility.id} className="animate-rise-up" style={{ animationDelay: `${i * 60}ms` }}>
+                <li
+                  key={facility.id}
+                  className="animate-rise-up"
+                  style={{ animationDelay: `${i * 60}ms` }}
+                >
                   <Link
                     href={`/venues/${slug}/book/${facility.id}`}
                     className="focus-visible:outline-accent group flex items-center gap-3.5 rounded-2xl border border-line bg-surface p-3.5 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-transparent hover:shadow-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
@@ -123,7 +127,10 @@ export default async function VenuePage({ params }: Props) {
                         }`}
                       >
                         {openCount > 0 ? (
-                          <span className="animate-pulse-dot h-1.5 w-1.5 rounded-full bg-accent" aria-hidden />
+                          <span
+                            className="animate-pulse-dot h-1.5 w-1.5 rounded-full bg-accent"
+                            aria-hidden
+                          />
                         ) : null}
                         {availabilityLabel}
                       </p>

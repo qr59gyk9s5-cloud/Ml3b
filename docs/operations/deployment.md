@@ -133,12 +133,13 @@ concrete list of what the founder does, once, outside this repo:
    out at a small fixed number of total clients across the whole
    project; Vercel runs several concurrent serverless instances of the
    same route, each holding its own connection pool (`src/lib/db/
-   client.ts`), and session mode's cap gets exhausted fast under any
+client.ts`), and session mode's cap gets exhausted fast under any
    real concurrent traffic — confirmed live on the dev project
    (`EMAXCONNSESSION: max clients reached in session mode`) the day
    before this was written. Transaction mode is what Supabase actually
    recommends for serverless/edge deployments and doesn't have this
    ceiling the same way.
+
 5. Connect your real custom domain in Vercel's project settings (Domains
    tab) and update DNS at your registrar — Vercel's own docs walk
    through this per-registrar.

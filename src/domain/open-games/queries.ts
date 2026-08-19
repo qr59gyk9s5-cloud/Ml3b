@@ -66,7 +66,9 @@ async function countJoinedByOpenGameId(openGameIds: string[]): Promise<Map<strin
   const rows = await db
     .select({ openGameId: openGamePlayers.openGameId, status: openGamePlayers.status })
     .from(openGamePlayers)
-    .where(and(inArray(openGamePlayers.openGameId, openGameIds), eq(openGamePlayers.status, 'JOINED')));
+    .where(
+      and(inArray(openGamePlayers.openGameId, openGameIds), eq(openGamePlayers.status, 'JOINED')),
+    );
   const counts = new Map<string, number>();
   for (const row of rows) {
     counts.set(row.openGameId, (counts.get(row.openGameId) ?? 0) + 1);
@@ -130,7 +132,9 @@ export async function listOpenGamesForUser(userId: string): Promise<OpenGameSumm
     .from(openGames)
     .where(eq(openGames.organizerId, userId));
 
-  const relevantIds = [...new Set([...joinedGameIds.map((j) => j.id), ...organized.map((o) => o.id)])];
+  const relevantIds = [
+    ...new Set([...joinedGameIds.map((j) => j.id), ...organized.map((o) => o.id)]),
+  ];
   if (relevantIds.length === 0) return [];
 
   const rows = await db

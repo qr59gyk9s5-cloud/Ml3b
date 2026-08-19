@@ -13,14 +13,7 @@
  * to the same thing: no coordinates, fall back to the plain "Cairo,
  * Egypt" default the app already shows everyone.
  */
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useState,
-  type ReactNode,
-} from 'react';
+import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
 import type { Coordinates } from '@/lib/geo/distance';
 
 type LocationStatus = 'idle' | 'detecting' | 'granted' | 'denied' | 'unsupported' | 'error';

@@ -41,13 +41,17 @@ export default async function Home({ searchParams }: Props) {
         <div
           aria-hidden
           className="animate-float pointer-events-none absolute -top-16 right-[-40px] h-56 w-56 rounded-full opacity-40 blur-[2px]"
-          style={{ background: 'radial-gradient(circle at 32% 30%, var(--accent-glow), var(--accent-strong))' }}
+          style={{
+            background:
+              'radial-gradient(circle at 32% 30%, var(--accent-glow), var(--accent-strong))',
+          }}
         />
         <div
           aria-hidden
           className="animate-float pointer-events-none absolute top-24 right-24 h-28 w-28 rounded-full opacity-30 blur-[2px]"
           style={{
-            background: 'radial-gradient(circle at 32% 30%, var(--floodlight), var(--floodlight-strong))',
+            background:
+              'radial-gradient(circle at 32% 30%, var(--floodlight), var(--floodlight-strong))',
             animationDelay: '0.6s',
             animationDuration: '9s',
           }}
@@ -70,8 +74,8 @@ export default async function Home({ searchParams }: Props) {
             Find your court, and play in seconds
           </h1>
           <p className="mt-3 max-w-lg text-sm leading-relaxed text-muted sm:text-base">
-            Real-time availability from venues across Cairo. Send a request, the venue confirms,
-            you play — no phone calls, no guesswork.
+            Real-time availability from venues across Cairo. Send a request, the venue confirms, you
+            play — no phone calls, no guesswork.
           </p>
 
           <div className="mt-6 flex max-w-md items-center gap-2 rounded-2xl border border-line bg-surface p-1.5 shadow-sm">
@@ -104,7 +108,9 @@ export default async function Home({ searchParams }: Props) {
               {sportCategories.map((cat) => {
                 const active = sp.sport === cat.code;
                 const tone = sportTone(cat.code);
-                const href = active ? '/' : `/?sport=${cat.code}${sp.district ? `&district=${sp.district}` : ''}`;
+                const href = active
+                  ? '/'
+                  : `/?sport=${cat.code}${sp.district ? `&district=${sp.district}` : ''}`;
                 return (
                   <Link
                     key={cat.code}
@@ -123,7 +129,9 @@ export default async function Home({ searchParams }: Props) {
                       <SportIcon code={cat.code} className="h-4 w-4" />
                     </span>
                     <span className="font-display text-xs font-bold">{cat.displayName}</span>
-                    <span className={`text-[10px] font-semibold ${active ? 'text-lime-ink/70' : 'text-faint'}`}>
+                    <span
+                      className={`text-[10px] font-semibold ${active ? 'text-lime-ink/70' : 'text-faint'}`}
+                    >
                       {cat.venueCount} venue{cat.venueCount === 1 ? '' : 's'}
                     </span>
                   </Link>
@@ -148,7 +156,9 @@ export default async function Home({ searchParams }: Props) {
             <div className="flex gap-3 overflow-x-auto pb-1">
               {areaCategories.map((area, i) => {
                 const active = sp.district === area.name;
-                const href = active ? '/' : `/?district=${encodeURIComponent(area.name)}${sp.sport ? `&sport=${sp.sport}` : ''}`;
+                const href = active
+                  ? '/'
+                  : `/?district=${encodeURIComponent(area.name)}${sp.sport ? `&sport=${sp.sport}` : ''}`;
                 const tones = [
                   'pitch-thumb',
                   'pitch-thumb tone-flood',

@@ -7,7 +7,8 @@ import { useLocation } from './location-provider';
 export function LocationPill({ className = '' }: { className?: string }) {
   const { status, label, detect } = useLocation();
 
-  const display = status === 'granted' && label ? label : status === 'detecting' ? 'Locating…' : 'Cairo, Egypt';
+  const display =
+    status === 'granted' && label ? label : status === 'detecting' ? 'Locating…' : 'Cairo, Egypt';
   const isLive = status === 'granted';
 
   return (

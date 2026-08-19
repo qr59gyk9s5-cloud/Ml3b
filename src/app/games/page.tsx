@@ -61,10 +61,17 @@ export default async function OpenGamesPage() {
       ) : (
         <ul className="flex flex-col gap-3">
           {games.map((game, i) => {
-            const fillPct = Math.min(100, Math.round((game.joinedCount / game.targetPlayers) * 100));
+            const fillPct = Math.min(
+              100,
+              Math.round((game.joinedCount / game.targetPlayers) * 100),
+            );
             const isFilling = game.status === 'FILLING' || game.status === 'MINIMUM_REACHED';
             return (
-              <li key={game.id} className="animate-rise-up" style={{ animationDelay: `${i * 60}ms` }}>
+              <li
+                key={game.id}
+                className="animate-rise-up"
+                style={{ animationDelay: `${i * 60}ms` }}
+              >
                 <Link
                   href={`/games/${game.id}`}
                   className="focus-visible:outline-accent group block rounded-2xl border border-line bg-surface p-4 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-transparent hover:shadow-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
@@ -82,7 +89,10 @@ export default async function OpenGamesPage() {
                           className={`flex flex-none items-center gap-1.5 rounded-full px-2.5 py-1 font-display text-[10px] font-bold ${TONE_CLASS[OPEN_GAME_STATUS_TONE[game.status]]}`}
                         >
                           {isFilling ? (
-                            <span className="animate-pulse-dot h-1.5 w-1.5 rounded-full bg-current" aria-hidden />
+                            <span
+                              className="animate-pulse-dot h-1.5 w-1.5 rounded-full bg-current"
+                              aria-hidden
+                            />
                           ) : null}
                           {OPEN_GAME_STATUS_LABEL[game.status]}
                         </span>
@@ -95,7 +105,9 @@ export default async function OpenGamesPage() {
                     <div className="mb-1.5 flex items-baseline justify-between">
                       <span className="font-display text-xs font-extrabold text-foreground">
                         {game.joinedCount}
-                        <span className="font-semibold text-faint">/{game.targetPlayers} players</span>
+                        <span className="font-semibold text-faint">
+                          /{game.targetPlayers} players
+                        </span>
                       </span>
                       <span className="font-display text-xs font-extrabold text-accent-strong">
                         {formatPriceMinor(game.pricePerPlayerMinor, game.currency)}
