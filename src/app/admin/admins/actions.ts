@@ -1,6 +1,7 @@
 'use server';
 
 import { redirect } from 'next/navigation';
+import { revalidatePath } from 'next/cache';
 import { getSessionActor } from '@/lib/auth/session';
 import { grantPlatformAdmin, revokePlatformAdmin } from '@/domain/admin/users';
 import { DomainError } from '@/domain/errors';
@@ -19,6 +20,7 @@ export async function grantAdminAction(formData: FormData) {
       err instanceof DomainError ? err.message : 'Something went wrong. Please try again.';
     redirect(`/admin/admins?error=${encodeURIComponent(message)}`);
   }
+  revalidatePath('/admin/admins');
   redirect('/admin/admins?done=1');
 }
 
@@ -39,5 +41,6 @@ export async function revokeAdminAction(formData: FormData) {
       err instanceof DomainError ? err.message : 'Something went wrong. Please try again.';
     redirect(`/admin/admins?error=${encodeURIComponent(message)}`);
   }
+  revalidatePath('/admin/admins');
   redirect('/admin/admins?done=1');
 }

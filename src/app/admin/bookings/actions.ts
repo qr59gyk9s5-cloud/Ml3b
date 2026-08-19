@@ -1,6 +1,7 @@
 'use server';
 
 import { redirect } from 'next/navigation';
+import { revalidatePath } from 'next/cache';
 import { getSessionActor } from '@/lib/auth/session';
 import { transitionBooking } from '@/domain/booking/transition';
 import { DomainError } from '@/domain/errors';
@@ -30,5 +31,6 @@ export async function overrideBookingAction(formData: FormData) {
       `/admin/bookings?ref=${encodeURIComponent(reference)}&error=${encodeURIComponent(message)}`,
     );
   }
+  revalidatePath('/admin/bookings');
   redirect(`/admin/bookings?ref=${encodeURIComponent(reference)}&done=1`);
 }

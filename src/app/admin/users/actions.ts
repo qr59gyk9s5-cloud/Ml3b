@@ -1,6 +1,7 @@
 'use server';
 
 import { redirect } from 'next/navigation';
+import { revalidatePath } from 'next/cache';
 import { getSessionActor } from '@/lib/auth/session';
 import { suspendUser, unsuspendUser } from '@/domain/admin/users';
 import { DomainError } from '@/domain/errors';
@@ -27,6 +28,7 @@ export async function suspendUserAction(formData: FormData) {
       `/admin/users?email=${encodeURIComponent(email)}&error=${encodeURIComponent(message)}`,
     );
   }
+  revalidatePath(`/admin/users`);
   redirect(`/admin/users?email=${encodeURIComponent(email)}&done=1`);
 }
 
@@ -47,5 +49,6 @@ export async function unsuspendUserAction(formData: FormData) {
       `/admin/users?email=${encodeURIComponent(email)}&error=${encodeURIComponent(message)}`,
     );
   }
+  revalidatePath(`/admin/users`);
   redirect(`/admin/users?email=${encodeURIComponent(email)}&done=1`);
 }

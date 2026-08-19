@@ -8,6 +8,7 @@
  * a booking at a venue the actor isn't staff at.
  */
 import { redirect } from 'next/navigation';
+import { revalidatePath } from 'next/cache';
 import { getSessionActor } from '@/lib/auth/session';
 import { transitionBooking } from '@/domain/booking/transition';
 import { DomainError } from '@/domain/errors';
@@ -30,6 +31,7 @@ export async function confirmRequestAction(formData: FormData) {
       err instanceof DomainError ? err.message : 'Something went wrong. Please try again.';
     redirect(`/dashboard/${venueId}?error=${encodeURIComponent(message)}`);
   }
+  revalidatePath(`/dashboard/${venueId}`);
   redirect(`/dashboard/${venueId}?confirmed=1`);
 }
 
@@ -52,5 +54,6 @@ export async function rejectRequestAction(formData: FormData) {
       err instanceof DomainError ? err.message : 'Something went wrong. Please try again.';
     redirect(`/dashboard/${venueId}?error=${encodeURIComponent(message)}`);
   }
+  revalidatePath(`/dashboard/${venueId}`);
   redirect(`/dashboard/${venueId}?rejected=1`);
 }

@@ -9,6 +9,7 @@
  * HTTP-shaped wrappers around it.
  */
 import { redirect } from 'next/navigation';
+import { revalidatePath } from 'next/cache';
 import { getSessionActor } from '@/lib/auth/session';
 import { createOpenGame } from '@/domain/open-games/create-open-game';
 import { joinOpenGame, leaveOpenGame } from '@/domain/open-games/join';
@@ -62,6 +63,7 @@ export async function createOpenGameAction(formData: FormData) {
     redirect(`${createPath}?error=${encodeURIComponent(errorMessage(err))}`);
   }
 
+  revalidatePath('/games');
   redirect(`/games/${openGameId}?created=1`);
 }
 
@@ -90,6 +92,8 @@ export async function joinOpenGameAction(formData: FormData) {
     redirect(`${gamePath}?error=${encodeURIComponent(errorMessage(err))}`);
   }
 
+  revalidatePath(gamePath);
+  revalidatePath('/games');
   redirect(`${gamePath}?joined=1`);
 }
 
@@ -107,6 +111,8 @@ export async function leaveOpenGameAction(formData: FormData) {
     redirect(`${gamePath}?error=${encodeURIComponent(errorMessage(err))}`);
   }
 
+  revalidatePath(gamePath);
+  revalidatePath('/games');
   redirect(`${gamePath}?left=1`);
 }
 
@@ -129,5 +135,7 @@ export async function organizerCancelOpenGameAction(formData: FormData) {
     redirect(`${gamePath}?error=${encodeURIComponent(errorMessage(err))}`);
   }
 
+  revalidatePath(gamePath);
+  revalidatePath('/games');
   redirect(`${gamePath}?cancelled=1`);
 }

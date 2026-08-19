@@ -1,6 +1,7 @@
 'use server';
 
 import { redirect } from 'next/navigation';
+import { revalidatePath } from 'next/cache';
 import { getSessionActor } from '@/lib/auth/session';
 import { createManualBooking } from '@/domain/booking/manual';
 import { DomainError } from '@/domain/errors';
@@ -35,5 +36,7 @@ export async function createManualBookingAction(formData: FormData) {
     redirect(`${manualPath}&error=${encodeURIComponent(message)}`);
   }
 
+  revalidatePath(`/dashboard/${venueId}`);
+  revalidatePath(`/dashboard/${venueId}/manual/${facilityId}`);
   redirect(`/dashboard/${venueId}?manual=1`);
 }

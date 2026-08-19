@@ -10,6 +10,7 @@
  * just the HTTP-shaped wrapper around it.
  */
 import { redirect } from 'next/navigation';
+import { revalidatePath } from 'next/cache';
 import { getSessionActor } from '@/lib/auth/session';
 import { createBookingRequest } from '@/domain/booking/create-request';
 import { DomainError } from '@/domain/errors';
@@ -43,5 +44,7 @@ export async function requestBookingAction(formData: FormData) {
     redirect(`${bookingPath}&error=${encodeURIComponent(message)}`);
   }
 
+  revalidatePath('/bookings');
+  revalidatePath(`/venues/${venueSlug}/book/${facilityId}`);
   redirect('/bookings?requested=1');
 }

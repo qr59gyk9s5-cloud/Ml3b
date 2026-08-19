@@ -8,6 +8,7 @@
  * duplicate password rules or email-format checks it already enforces.
  */
 import { redirect } from 'next/navigation';
+import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { createActionSupabaseClient, isSupabaseConfigured } from '@/lib/auth/server';
 import { env } from '@/lib/config/env';
@@ -54,6 +55,10 @@ export async function signInWithPasswordAction(
   const { error } = await supabase.auth.signInWithPassword(parsed.data);
   if (error) return { error: error.message };
 
+  // 'layout': SiteHeader/BottomTabBar (Sign in/Sign up vs. profile+bell)
+  // render from the root layout — without this the header stays showing
+  // "Sign in" until an unrelated navigation happens to bust the cache.
+  revalidatePath('/', 'layout');
   redirect(safeNextPath(formData.get('next')));
 }
 
@@ -107,5 +112,6 @@ export async function signOutAction() {
 
   const supabase = await createActionSupabaseClient();
   await supabase.auth.signOut();
+  revalidatePath('/', 'layout');
   redirect('/');
 }
