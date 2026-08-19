@@ -125,6 +125,20 @@ concrete list of what the founder does, once, outside this repo:
    `SUPABASE_SERVICE_ROLE_KEY`), a freshly-generated `CRON_SECRET`
    (different from the dev one), and `NEXT_PUBLIC_APP_URL` left unset so
    it's inferred from the real production domain (`src/lib/config/env.ts`).
+
+   **`DATABASE_URL` must use Supabase's transaction-mode pooler, not the
+   session-mode one.** Supabase's connection string page shows several
+   options — pick the one labeled "Transaction" (port `6543`), not
+   "Session" (port `5432`) or the direct connection. Session mode caps
+   out at a small fixed number of total clients across the whole
+   project; Vercel runs several concurrent serverless instances of the
+   same route, each holding its own connection pool (`src/lib/db/
+   client.ts`), and session mode's cap gets exhausted fast under any
+   real concurrent traffic — confirmed live on the dev project
+   (`EMAXCONNSESSION: max clients reached in session mode`) the day
+   before this was written. Transaction mode is what Supabase actually
+   recommends for serverless/edge deployments and doesn't have this
+   ceiling the same way.
 5. Connect your real custom domain in Vercel's project settings (Domains
    tab) and update DNS at your registrar — Vercel's own docs walk
    through this per-registrar.
