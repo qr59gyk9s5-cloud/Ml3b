@@ -47,9 +47,19 @@ export interface ComputeSlotsParams {
   rules: WeeklyRuleInput[];
   exceptions?: ExceptionInput[];
   blockedRanges?: BlockedRangeInput[];
+  /** Slots starting at or before this instant are flagged unavailable
+   * (reason 'ELAPSED') instead of being offered as bookable — a slot
+   * "available" only in the sense that nothing else has claimed it yet
+   * is not the same as one a customer could actually still book. Kept
+   * as an explicit param (not an internal Date.now() read) for the same
+   * reason `date`/`timeZone` are params — this stays a pure, replayable
+   * function; src/domain/availability/queries.ts (the impure wrapper)
+   * supplies the real clock reading. Optional — omit only from tests
+   * that don't care about elapsed-slot filtering, never in real code. */
+  now?: Date;
 }
 
-export type SlotUnavailableReason = 'CLOSED_PERIOD' | 'BOOKED';
+export type SlotUnavailableReason = 'CLOSED_PERIOD' | 'BOOKED' | 'ELAPSED';
 
 export interface AvailabilitySlot {
   startAt: Date;
@@ -89,6 +99,7 @@ function classifySlot(
   endAt: Date,
   exceptions: ExceptionInput[],
   blockedRanges: BlockedRangeInput[],
+  now: Date | undefined,
 ): AvailabilitySlot {
   const closedByException = exceptions.some(
     (e) => e.isClosed && overlaps(startAt, endAt, e.startsAt, e.endsAt),
@@ -99,6 +110,11 @@ function classifySlot(
   const alreadyBooked = blockedRanges.some((b) => overlaps(startAt, endAt, b.startAt, b.endAt));
   if (alreadyBooked) {
     return { startAt, endAt, available: false, reason: 'BOOKED' };
+  }
+  // Checked last, deliberately — a slot that's both booked and in the
+  // past should read as "booked" (why it's really gone), not "elapsed".
+  if (now && startAt.getTime() <= now.getTime()) {
+    return { startAt, endAt, available: false, reason: 'ELAPSED' };
   }
   return { startAt, endAt, available: true, reason: null };
 }
@@ -111,6 +127,7 @@ export function computeAvailableSlots(params: ComputeSlotsParams): AvailabilityS
     rules,
     exceptions = [],
     blockedRanges = [],
+    now,
   } = params;
 
   if (!Number.isInteger(slotDurationMinutes) || slotDurationMinutes <= 0) {
@@ -169,7 +186,7 @@ export function computeAvailableSlots(params: ComputeSlotsParams): AvailabilityS
       seenSlotStarts.add(cursor);
       const startAt = new Date(cursor);
       const endAt = new Date(cursor + slotMs);
-      slots.push(classifySlot(startAt, endAt, exceptions, blockedRanges));
+      slots.push(classifySlot(startAt, endAt, exceptions, blockedRanges, now));
     }
   }
 

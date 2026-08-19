@@ -283,4 +283,60 @@ describe('computeAvailableSlots', () => {
     const times = slots.map((s) => s.startAt.getTime());
     expect(times).toEqual([...times].sort((a, b) => a - b));
   });
+
+  describe('now (elapsed-slot filtering)', () => {
+    // Sunday 2026-08-16, 09:00-12:00 Cairo -> three hourly slots at
+    // 06:00/07:00/08:00 UTC, same fixture as the very first test above.
+    const rules: WeeklyRuleInput[] = [
+      { dayOfWeek: 0, startTime: '09:00', endTime: '12:00', isClosed: false },
+    ];
+
+    it('marks a slot ELAPSED once its start time has passed', () => {
+      const slots = computeAvailableSlots({
+        date: '2026-08-16',
+        timeZone: CAIRO,
+        slotDurationMinutes: 60,
+        rules,
+        now: new Date('2026-08-16T07:00:00.000Z'), // exactly the 2nd slot's start
+      });
+      expect(slots.map((s) => [s.available, s.reason])).toEqual([
+        [false, 'ELAPSED'], // 06:00 — fully in the past
+        [false, 'ELAPSED'], // 07:00 — starts exactly at `now`, not bookable
+        [true, null], // 08:00 — still ahead
+      ]);
+    });
+
+    it('elapsed and booked at the same time reports BOOKED, not ELAPSED', () => {
+      // The real-world case this ordering matters for: a slot that
+      // already happened AND was booked should read as "booked" (why
+      // it's really gone), not "elapsed" (which would read as if it
+      // just never got booked in time).
+      const slots = computeAvailableSlots({
+        date: '2026-08-16',
+        timeZone: CAIRO,
+        slotDurationMinutes: 60,
+        rules,
+        blockedRanges: [
+          {
+            startAt: new Date('2026-08-16T06:00:00.000Z'),
+            endAt: new Date('2026-08-16T07:00:00.000Z'),
+          },
+        ],
+        now: new Date('2026-08-16T09:00:00.000Z'), // well after every slot
+      });
+      expect(slots[0].reason).toBe('BOOKED');
+      expect(slots[1].reason).toBe('ELAPSED');
+      expect(slots[2].reason).toBe('ELAPSED');
+    });
+
+    it('omitting `now` disables elapsed-filtering entirely (existing tests above rely on this)', () => {
+      const slots = computeAvailableSlots({
+        date: '2026-08-16',
+        timeZone: CAIRO,
+        slotDurationMinutes: 60,
+        rules,
+      });
+      expect(slots.every((s) => s.available)).toBe(true);
+    });
+  });
 });

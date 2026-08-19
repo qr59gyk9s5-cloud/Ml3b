@@ -81,5 +81,6 @@ export async function getAvailableSlots(
       isClosed: e.isClosed,
     })),
     blockedRanges: confirmedBookings.map((b) => ({ startAt: b.startAt, endAt: b.endAt })),
+    now: new Date(),
   });
 }
