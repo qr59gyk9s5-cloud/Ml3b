@@ -5,10 +5,10 @@ import { ChevronLeft, Settings as SettingsIcon } from 'lucide-react';
 import { getSessionActor } from '@/lib/auth/session';
 import { getVenueByIdForStaff } from '@/domain/venue/staff-queries';
 import { resolveVenueAuthzContext } from '@/domain/venue/authz-context';
-import { isVenueOwnerOrManager } from '@/domain/authz/venue';
+import { isVenueOwner, isVenueOwnerOrManager } from '@/domain/authz/venue';
 import { DomainError } from '@/domain/errors';
 import { OPEN_GAME_MAX_HOLD_HOURS, OPEN_GAME_MIN_LEAD_TIME_HOURS } from '@/lib/config/constants';
-import { updateOpenGameSettingsAction } from './actions';
+import { updateOpenGameSettingsAction, updateVenueCoverPhotoAction } from './actions';
 
 type Props = {
   params: Promise<{ venueId: string }>;
@@ -67,6 +67,47 @@ export default async function VenueSettingsPage({ params, searchParams }: Props)
         <p className="mb-4 rounded-xl bg-accent-wash px-3 py-2.5 text-sm font-medium text-accent-strong">
           Saved.
         </p>
+      ) : null}
+
+      {isVenueOwner(ctx) ? (
+        <form
+          action={updateVenueCoverPhotoAction}
+          className="mb-4 rounded-2xl border border-line bg-surface p-4 shadow-sm"
+        >
+          <input type="hidden" name="venueId" value={venueId} />
+          <p className="mb-1 text-sm font-bold text-foreground">Cover photo</p>
+          <p className="mb-4 text-xs text-muted">
+            Shown on your venue&apos;s card and detail page instead of the plain placeholder — a
+            link to a real photo you host somewhere (your own site, a photo host, anywhere publicly
+            reachable over https). Leave blank to go back to the placeholder.
+          </p>
+          {venue.coverPhotoUrl ? (
+            // Arbitrary externally-hosted URL, not a known set of remote
+            // hosts next/image's domain allowlist could cover.
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={venue.coverPhotoUrl}
+              alt=""
+              className="mb-3 h-32 w-full rounded-xl object-cover"
+            />
+          ) : null}
+          <label className="mb-4 flex flex-col gap-1 text-xs font-bold text-faint uppercase">
+            Photo URL
+            <input
+              type="url"
+              name="coverPhotoUrl"
+              placeholder="https://…"
+              defaultValue={venue.coverPhotoUrl ?? ''}
+              className="focus-visible:outline-accent rounded-lg border border-line bg-surface px-3 py-2 text-sm font-normal text-foreground normal-case focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+            />
+          </label>
+          <button
+            type="submit"
+            className="focus-visible:outline-accent w-full rounded-xl border border-line px-4 py-2.5 font-display text-sm font-bold text-foreground transition-colors hover:border-accent hover:text-accent-strong focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+          >
+            Save photo
+          </button>
+        </form>
       ) : null}
 
       <form

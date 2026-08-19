@@ -37,7 +37,13 @@ function cspHeaderValue(nonce: string): string {
     "default-src 'self'",
     `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'`,
     "style-src 'self' 'unsafe-inline'",
-    "img-src 'self' data:",
+    // https: (not a specific host allowlist) — venue owners can set an
+    // arbitrary cover-photo URL (src/domain/venue/settings.ts's
+    // updateVenueCoverPhoto), so there's no fixed set of hosts to name.
+    // Still real hardening: blocks http:, data:, and any other scheme
+    // from loading as an image, same as the domain layer's own
+    // validation on the way in.
+    "img-src 'self' data: https:",
     "font-src 'self'",
     "connect-src 'self' https://vitals.vercel-insights.com https://va.vercel-scripts.com",
     "frame-ancestors 'none'",

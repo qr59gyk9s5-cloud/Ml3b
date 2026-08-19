@@ -42,10 +42,23 @@ export default async function VenuePage({ params }: Props) {
     <main>
       <div
         aria-hidden
-        className="pitch-thumb relative flex h-44 w-full items-center justify-center text-4xl sm:h-64"
+        className={`${venue.coverPhotoUrl ? '' : 'pitch-thumb'} relative flex h-44 w-full items-center justify-center overflow-hidden text-4xl sm:h-64`}
       >
-        <span className="animate-float pointer-events-none absolute -top-10 right-6 h-32 w-32 rounded-full bg-white/15 blur-xl" />
-        🏟️
+        {venue.coverPhotoUrl ? (
+          // Venue-owner-supplied arbitrary URL, see
+          // src/domain/venue/settings.ts's doc comment.
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={venue.coverPhotoUrl}
+            alt=""
+            className="absolute inset-0 h-full w-full object-cover"
+          />
+        ) : (
+          <>
+            <span className="animate-float pointer-events-none absolute -top-10 right-6 h-32 w-32 rounded-full bg-white/15 blur-xl" />
+            🏟️
+          </>
+        )}
       </div>
 
       <div className="mx-auto max-w-3xl px-4 py-6 sm:px-6">

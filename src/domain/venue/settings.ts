@@ -10,7 +10,7 @@ import { eq } from 'drizzle-orm';
 import { getDb } from '@/lib/db/client';
 import { venues, type Venue } from '@/lib/db/schema';
 import { DomainError } from '@/domain/errors';
-import { isVenueOwnerOrManager, type VenueAuthzContext } from '@/domain/authz/venue';
+import { isVenueOwner, isVenueOwnerOrManager, type VenueAuthzContext } from '@/domain/authz/venue';
 
 // Sanity bounds, not arbitrary — a venue picking 0 or negative hours
 // would break create-open-game.ts's math (it just subtracts these from
@@ -69,6 +69,64 @@ export async function updateOpenGameSettings(
       openGameMaxHoldHours: input.maxHoldHours,
       updatedAt: new Date(),
     })
+    .where(eq(venues.id, venueId))
+    .returning();
+  if (!updated) {
+    throw new DomainError('NOT_FOUND', 'Venue not found.');
+  }
+  return updated;
+}
+
+/**
+ * coverPhotoUrl has existed on the venues table since Phase 2 but was
+ * never actually settable or displayed anywhere — every venue card and
+ * hero banner just showed the gradient-and-emoji placeholder regardless
+ * of whether a real photo URL was sitting right there in the row. This
+ * is the missing write side; src/components/venue-grid.tsx and the venue
+ * detail page are the read side, both updated in the same change that
+ * added this function.
+ *
+ * OWNER only (not MANAGER) — branding/photography is an ownership-level
+ * decision, not day-to-day operations, unlike the open-game hold-
+ * duration setting above.
+ */
+export async function updateVenueCoverPhoto(
+  venueId: string,
+  ctx: VenueAuthzContext,
+  coverPhotoUrl: string | null,
+): Promise<Venue> {
+  if (!isVenueOwner(ctx)) {
+    throw new DomainError('FORBIDDEN', 'Only a venue owner can change the cover photo.');
+  }
+  if (ctx.isSuspended) {
+    throw new DomainError('FORBIDDEN', 'Your account has been suspended.');
+  }
+
+  if (coverPhotoUrl !== null) {
+    // https only, not also http — never trust the client with
+    // unvalidated content going into an <img src> shown to every
+    // visitor (a non-https scheme like javascript: is never a
+    // legitimate photo URL), and it must match src/proxy.ts's CSP
+    // img-src directive, which only allows https: for exactly this
+    // reason. http: would validate here but then silently fail to
+    // render (CSP-blocked, and likely mixed-content-blocked by the
+    // browser too, on this https site) — the same class of bug as the
+    // two real CSP issues already found and fixed this project.
+    let parsed: URL;
+    try {
+      parsed = new URL(coverPhotoUrl);
+    } catch {
+      throw new DomainError('VALIDATION_FAILED', 'Enter a valid photo URL.');
+    }
+    if (parsed.protocol !== 'https:') {
+      throw new DomainError('VALIDATION_FAILED', 'The photo URL must start with https://.');
+    }
+  }
+
+  const db = getDb();
+  const [updated] = await db
+    .update(venues)
+    .set({ coverPhotoUrl, updatedAt: new Date() })
     .where(eq(venues.id, venueId))
     .returning();
   if (!updated) {

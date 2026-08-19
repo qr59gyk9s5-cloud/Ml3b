@@ -76,9 +76,20 @@ export function VenueGrid({ venues }: { venues: VenueSummary[] }) {
               className="focus-visible:outline-accent group flex gap-3.5 rounded-2xl border border-line bg-surface p-3.5 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-transparent hover:shadow-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
             >
               <div
-                className={`pitch-thumb ${thumbTone(venue.id)} relative flex h-20 w-20 flex-none items-center justify-center rounded-xl text-2xl`}
+                className={`${venue.coverPhotoUrl ? '' : `pitch-thumb ${thumbTone(venue.id)}`} relative flex h-20 w-20 flex-none items-center justify-center overflow-hidden rounded-xl text-2xl`}
               >
-                🏟️
+                {venue.coverPhotoUrl ? (
+                  // Venue-owner-supplied arbitrary URL, see
+                  // src/domain/venue/settings.ts's doc comment.
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={venue.coverPhotoUrl}
+                    alt=""
+                    className="absolute inset-0 h-full w-full object-cover"
+                  />
+                ) : (
+                  '🏟️'
+                )}
                 {minPriceMinor !== null && currency && (
                   <span className="absolute bottom-1 left-1/2 -translate-x-1/2 rounded-full bg-lime px-1.5 py-0.5 text-[9px] font-extrabold whitespace-nowrap text-lime-ink shadow-sm">
                     {formatPriceMinor(minPriceMinor, currency)}/hr
