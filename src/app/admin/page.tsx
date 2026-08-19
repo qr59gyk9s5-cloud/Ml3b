@@ -22,7 +22,7 @@ export default async function AdminOverviewPage() {
         <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-3">
           <Link
             href="/admin/venues"
-            className="focus-visible:outline-accent rounded-2xl border border-line bg-surface p-4 shadow-sm transition-colors hover:border-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+            className="focus-visible:outline-accent rounded-2xl border border-line bg-surface p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:border-accent hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
           >
             <div className="flex items-center gap-1.5 text-xs font-semibold text-muted">
               <AlertTriangle className="h-3.5 w-3.5 text-floodlight" aria-hidden />
@@ -80,25 +80,25 @@ export default async function AdminOverviewPage() {
         <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
           <Link
             href="/admin/venues"
-            className="focus-visible:outline-accent rounded-xl border border-line bg-surface px-3 py-2.5 text-center text-xs font-semibold text-foreground transition-colors hover:border-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+            className="focus-visible:outline-accent rounded-xl border border-line bg-surface px-3 py-2.5 text-center text-xs font-semibold text-foreground transition-all hover:-translate-y-0.5 hover:border-accent hover:shadow-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
           >
             Venues
           </Link>
           <Link
             href="/admin/bookings"
-            className="focus-visible:outline-accent rounded-xl border border-line bg-surface px-3 py-2.5 text-center text-xs font-semibold text-foreground transition-colors hover:border-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+            className="focus-visible:outline-accent rounded-xl border border-line bg-surface px-3 py-2.5 text-center text-xs font-semibold text-foreground transition-all hover:-translate-y-0.5 hover:border-accent hover:shadow-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
           >
             Bookings
           </Link>
           <Link
             href="/admin/users"
-            className="focus-visible:outline-accent rounded-xl border border-line bg-surface px-3 py-2.5 text-center text-xs font-semibold text-foreground transition-colors hover:border-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+            className="focus-visible:outline-accent rounded-xl border border-line bg-surface px-3 py-2.5 text-center text-xs font-semibold text-foreground transition-all hover:-translate-y-0.5 hover:border-accent hover:shadow-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
           >
             Users
           </Link>
           <Link
             href="/admin/audit-log"
-            className="focus-visible:outline-accent rounded-xl border border-line bg-surface px-3 py-2.5 text-center text-xs font-semibold text-foreground transition-colors hover:border-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+            className="focus-visible:outline-accent rounded-xl border border-line bg-surface px-3 py-2.5 text-center text-xs font-semibold text-foreground transition-all hover:-translate-y-0.5 hover:border-accent hover:shadow-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
           >
             Audit log
           </Link>

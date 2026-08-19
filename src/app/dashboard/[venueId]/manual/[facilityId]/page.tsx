@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
 import type { Metadata } from 'next';
-import { ChevronLeft } from 'lucide-react';
+import { ChevronLeft, UserPlus } from 'lucide-react';
 import { getSessionActor } from '@/lib/auth/session';
 import { getVenueByIdForStaff } from '@/domain/venue/staff-queries';
 import { getActiveFacilityById } from '@/domain/venue/queries';
@@ -64,10 +64,18 @@ export default async function ManualBookingPage({ params, searchParams }: Props)
         <ChevronLeft className="h-3.5 w-3.5" aria-hidden /> {venue.name}
       </Link>
 
-      <h1 className="text-xl font-extrabold tracking-tight text-foreground">
-        Add a walk-in booking — {facility.name}
-      </h1>
-      <p className="mt-1 text-xs text-muted">
+      <div className="flex items-center gap-3">
+        <span className="flex h-11 w-11 flex-none items-center justify-center rounded-xl bg-accent-wash text-accent-strong">
+          <UserPlus className="h-5 w-5" aria-hidden />
+        </span>
+        <div className="min-w-0">
+          <h1 className="truncate font-display text-xl font-extrabold tracking-tight text-foreground">
+            Add a walk-in booking
+          </h1>
+          <p className="text-xs text-muted">{facility.name}</p>
+        </div>
+      </div>
+      <p className="mt-3 rounded-xl bg-surface-2 px-3 py-2.5 text-xs text-muted">
         Goes straight to CONFIRMED, same double-booking guarantee as an online booking.
       </p>
 
@@ -115,8 +123,8 @@ export default async function ManualBookingPage({ params, searchParams }: Props)
                 href={`?date=${date}&duration=${d}`}
                 className={`rounded-full border px-3 py-1 text-xs font-bold transition-colors ${
                   d === duration
-                    ? 'border-accent bg-accent text-white'
-                    : 'border-line text-muted hover:border-accent'
+                    ? 'border-transparent bg-gradient-to-br from-accent to-accent-strong text-white shadow-accent'
+                    : 'border-line text-muted hover:border-accent hover:text-accent-strong'
                 }`}
               >
                 {d} min
@@ -130,10 +138,10 @@ export default async function ManualBookingPage({ params, searchParams }: Props)
             <Link
               key={d}
               href={`?date=${d}&duration=${duration}`}
-              className={`flex-none rounded-xl border px-3 py-1.5 text-xs font-bold transition-colors ${
+              className={`flex-none rounded-xl border px-3 py-1.5 font-display text-xs font-bold transition-colors ${
                 d === date
-                  ? 'border-accent bg-accent text-white'
-                  : 'border-line text-muted hover:border-accent'
+                  ? 'border-transparent bg-gradient-to-br from-accent to-accent-strong text-white shadow-accent'
+                  : 'border-line text-muted hover:border-accent hover:text-accent-strong'
               }`}
             >
               {formatDateLabel(d)}
@@ -167,14 +175,22 @@ export default async function ManualBookingPage({ params, searchParams }: Props)
                     title={
                       slot.reason === 'BOOKED'
                         ? 'Already booked'
-                        : 'Not enough room for this duration'
+                        : slot.reason === 'ELAPSED'
+                          ? 'Already in the past'
+                          : 'Not enough room for this duration'
                     }
                   >
                     <span className="text-xs font-bold text-faint">
                       {formatSlotTime(slot.startAt, venue.timezone)}
                     </span>
                     <span className="text-[10px] text-faint">
-                      {slot.available ? '' : slot.reason === 'BOOKED' ? 'Booked' : 'Closed'}
+                      {slot.available
+                        ? ''
+                        : slot.reason === 'BOOKED'
+                          ? 'Booked'
+                          : slot.reason === 'ELAPSED'
+                            ? 'Past'
+                            : 'Closed'}
                     </span>
                   </div>
                 );
@@ -186,7 +202,7 @@ export default async function ManualBookingPage({ params, searchParams }: Props)
                   name="startAt"
                   value={slot.startAt.toISOString()}
                   title="Add this slot"
-                  className="focus-visible:outline-accent flex w-full flex-col items-center rounded-xl border border-line bg-surface px-2 py-2.5 text-center transition-colors hover:border-accent hover:bg-accent-wash focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+                  className="focus-visible:outline-accent flex w-full flex-col items-center rounded-xl border border-line bg-surface px-2 py-2.5 text-center transition-all duration-200 hover:-translate-y-0.5 hover:border-accent hover:bg-accent-wash focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
                 >
                   <span className="text-xs font-bold text-foreground">
                     {formatSlotTime(slot.startAt, venue.timezone)}

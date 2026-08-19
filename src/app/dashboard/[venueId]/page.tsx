@@ -87,10 +87,14 @@ export default async function VenueDashboardPage({ params, searchParams }: Props
       </Link>
 
       <div className="mb-6 flex items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <LayoutDashboard className="h-5 w-5 text-accent-strong" aria-hidden />
+        <div className="flex items-center gap-3">
+          <span className="flex h-11 w-11 flex-none items-center justify-center rounded-xl bg-accent-wash text-accent-strong">
+            <LayoutDashboard className="h-5 w-5" aria-hidden />
+          </span>
           <div>
-            <h1 className="text-xl font-extrabold tracking-tight text-foreground">{venue.name}</h1>
+            <h1 className="font-display text-xl font-extrabold tracking-tight text-foreground">
+              {venue.name}
+            </h1>
             <p className="text-xs text-muted">
               {ctx.isPlatformAdmin && !ctx.venueRole ? 'Admin access' : ctx.venueRole}
             </p>
@@ -140,10 +144,11 @@ export default async function VenueDashboardPage({ params, searchParams }: Props
           </p>
         ) : (
           <ul className="flex flex-col gap-2.5">
-            {requests.map((booking) => (
+            {requests.map((booking, i) => (
               <li
                 key={booking.id}
-                className="rounded-2xl border border-line bg-surface p-3.5 shadow-sm"
+                style={{ animationDelay: `${Math.min(i, 8) * 0.05}s` }}
+                className="animate-rise-up rounded-2xl border border-line bg-surface p-3.5 shadow-sm transition-shadow hover:shadow-md"
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
@@ -172,7 +177,7 @@ export default async function VenueDashboardPage({ params, searchParams }: Props
                     <input type="hidden" name="bookingId" value={booking.id} />
                     <button
                       type="submit"
-                      className="focus-visible:outline-accent flex items-center gap-1.5 rounded-lg bg-accent px-3 py-1.5 text-xs font-bold text-white transition-colors hover:bg-accent-strong focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+                      className="btn-sheen focus-visible:outline-accent flex items-center gap-1.5 rounded-lg bg-gradient-to-br from-accent to-accent-strong px-3 py-1.5 text-xs font-bold text-white shadow-accent transition-transform hover:-translate-y-0.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
                     >
                       <CheckCircle2 className="h-3.5 w-3.5" aria-hidden /> Confirm
                     </button>
@@ -264,7 +269,7 @@ export default async function VenueDashboardPage({ params, searchParams }: Props
               <li key={facility.id}>
                 <Link
                   href={`/dashboard/${venueId}/manual/${facility.id}`}
-                  className="focus-visible:outline-accent flex items-center justify-between gap-3 rounded-xl border border-line bg-surface px-3.5 py-2.5 transition-colors hover:border-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+                  className="focus-visible:outline-accent flex items-center justify-between gap-3 rounded-xl border border-line bg-surface px-3.5 py-2.5 transition-all hover:-translate-y-0.5 hover:border-accent hover:shadow-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
                 >
                   <span className="text-sm font-bold text-foreground">{facility.name}</span>
                   <span className="flex items-center gap-1 text-xs font-bold text-accent-strong">

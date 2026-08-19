@@ -31,9 +31,13 @@ export default async function NotificationsPage() {
   return (
     <main className="mx-auto max-w-2xl px-4 py-6 sm:px-6">
       <div className="mb-6 flex items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <Bell className="h-5 w-5 text-accent-strong" aria-hidden />
-          <h1 className="text-xl font-extrabold tracking-tight text-foreground">Notifications</h1>
+        <div className="flex items-center gap-3">
+          <span className="flex h-11 w-11 flex-none items-center justify-center rounded-xl bg-accent-wash text-accent-strong">
+            <Bell className="h-5 w-5" aria-hidden />
+          </span>
+          <h1 className="font-display text-xl font-extrabold tracking-tight text-foreground">
+            Notifications
+          </h1>
         </div>
         {hasUnread ? (
           <form action={markAllNotificationsReadAction}>
@@ -48,9 +52,9 @@ export default async function NotificationsPage() {
       </div>
 
       {items.length === 0 ? (
-        <div className="flex flex-col items-center gap-2 rounded-2xl border border-dashed border-line px-6 py-16 text-center">
-          <span aria-hidden className="text-2xl">
-            🔔
+        <div className="animate-rise-up flex flex-col items-center gap-2 rounded-2xl border border-dashed border-line px-6 py-16 text-center">
+          <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-surface-2 text-faint">
+            <Bell className="h-5 w-5" aria-hidden />
           </span>
           <p className="text-sm font-medium text-foreground">Nothing yet</p>
           <p className="max-w-sm text-xs text-muted">
@@ -59,7 +63,7 @@ export default async function NotificationsPage() {
         </div>
       ) : (
         <ul className="flex flex-col gap-2">
-          {items.map((notification) => {
+          {items.map((notification, i) => {
             const unread = notification.readAt === null;
             const label =
               NOTIFICATION_EVENT_LABEL[notification.type as NotificationEventType] ??
@@ -67,8 +71,11 @@ export default async function NotificationsPage() {
             return (
               <li
                 key={notification.id}
-                className={`flex items-center justify-between gap-3 rounded-xl border p-3 ${
-                  unread ? 'border-accent/30 bg-accent-wash' : 'border-line bg-surface'
+                style={{ animationDelay: `${Math.min(i, 8) * 0.04}s` }}
+                className={`animate-rise-up flex items-center justify-between gap-3 rounded-xl border p-3 transition-colors ${
+                  unread
+                    ? 'border-accent/30 bg-accent-wash'
+                    : 'border-line bg-surface hover:border-accent/40'
                 }`}
               >
                 <div className="flex items-center gap-2 min-w-0">

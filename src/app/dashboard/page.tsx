@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import type { Metadata } from 'next';
-import { ChevronRight, LayoutDashboard } from 'lucide-react';
+import { ChevronRight, Lock, LayoutDashboard } from 'lucide-react';
 import { getSessionActor } from '@/lib/auth/session';
 import { listStaffVenuesForUser } from '@/domain/venue/staff-queries';
 
@@ -19,15 +19,19 @@ export default async function DashboardPage() {
 
   return (
     <main className="mx-auto max-w-2xl px-4 py-6 sm:px-6">
-      <div className="mb-6 flex items-center gap-2">
-        <LayoutDashboard className="h-5 w-5 text-accent-strong" aria-hidden />
-        <h1 className="text-xl font-extrabold tracking-tight text-foreground">Venue dashboard</h1>
+      <div className="mb-6 flex items-center gap-3">
+        <span className="flex h-11 w-11 flex-none items-center justify-center rounded-xl bg-accent-wash text-accent-strong">
+          <LayoutDashboard className="h-5 w-5" aria-hidden />
+        </span>
+        <h1 className="font-display text-xl font-extrabold tracking-tight text-foreground">
+          Venue dashboard
+        </h1>
       </div>
 
       {staffVenues.length === 0 ? (
-        <div className="flex flex-col items-center gap-2 rounded-2xl border border-dashed border-line px-6 py-16 text-center">
-          <span aria-hidden className="text-2xl">
-            🔒
+        <div className="animate-rise-up flex flex-col items-center gap-2 rounded-2xl border border-dashed border-line px-6 py-16 text-center">
+          <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-surface-2 text-faint">
+            <Lock className="h-5 w-5" aria-hidden />
           </span>
           <p className="text-sm font-medium text-foreground">You&apos;re not staff at any venue</p>
           <p className="max-w-sm text-xs text-muted">
