@@ -40,57 +40,71 @@ export default async function VenuePage({ params }: Props) {
 
   return (
     <main>
-      <div
-        aria-hidden
-        className={`${venue.coverPhotoUrl ? '' : 'pitch-thumb'} relative flex h-44 w-full items-center justify-center overflow-hidden text-4xl sm:h-64`}
-      >
-        {venue.coverPhotoUrl ? (
-          // Venue-owner-supplied arbitrary URL, see
-          // src/domain/venue/settings.ts's doc comment.
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={venue.coverPhotoUrl}
-            alt=""
-            className="absolute inset-0 h-full w-full object-cover"
-          />
-        ) : (
-          <>
-            <span className="animate-float pointer-events-none absolute -top-10 right-6 h-32 w-32 rounded-full bg-white/15 blur-xl" />
-            🏟️
-          </>
-        )}
-      </div>
+      {/* Same dark-ink hero family as the home page and header — a photo
+       * (or the pitch-thumb placeholder) behind a scrim so the name reads
+       * as on-ink text, easing into the light page below via the same
+       * bottom fade the home hero uses. */}
+      <section className="relative overflow-hidden bg-ink">
+        <div aria-hidden className="absolute inset-0">
+          {venue.coverPhotoUrl ? (
+            // Venue-owner-supplied arbitrary URL, see
+            // src/domain/venue/settings.ts's doc comment.
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={venue.coverPhotoUrl} alt="" className="h-full w-full object-cover" />
+          ) : (
+            <div className="pitch-thumb h-full w-full" />
+          )}
+          <div className="absolute inset-0 bg-gradient-to-t from-ink via-ink/65 to-ink/25" />
+        </div>
+        <span
+          aria-hidden
+          className="animate-float pointer-events-none absolute -top-16 right-[-30px] h-48 w-48 rounded-full opacity-35 blur-[2px]"
+          style={{
+            background:
+              'radial-gradient(circle at 32% 30%, var(--accent-glow), var(--accent-strong))',
+          }}
+        />
+        {/* Eases into the light page below instead of a hard dark-to-light
+         * cut, same as the home hero. */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-x-0 bottom-0 h-14"
+          style={{ background: 'linear-gradient(to bottom, transparent, var(--background))' }}
+        />
+
+        <div className="animate-rise-up relative mx-auto max-w-3xl px-4 pt-6 pb-10 sm:px-6 sm:pt-8 sm:pb-14">
+          <Link
+            href="/"
+            className="focus-visible:outline-accent-bright mb-4 inline-flex items-center gap-1 font-display text-xs font-bold text-on-ink-muted transition-colors hover:text-on-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+          >
+            <ChevronLeft className="h-3.5 w-3.5" aria-hidden /> All venues
+          </Link>
+
+          <h1 className="max-w-2xl font-display text-2xl font-extrabold tracking-tight text-on-ink sm:text-3xl">
+            {venue.name}
+          </h1>
+          <p className="mt-1.5 flex items-center gap-1 text-sm text-on-ink-muted">
+            <MapPin className="h-3.5 w-3.5 flex-none" aria-hidden />
+            {[venue.district, venue.city, countryDisplayName(venue.country)]
+              .filter(Boolean)
+              .join(', ')}
+            <VenueDistance
+              latitude={venue.latitude}
+              longitude={venue.longitude}
+              className="font-semibold text-accent-bright"
+            />
+          </p>
+
+          {venue.description ? (
+            <p className="mt-4 max-w-xl text-sm leading-relaxed text-on-ink-muted">
+              {venue.description}
+            </p>
+          ) : null}
+        </div>
+      </section>
 
       <div className="mx-auto max-w-3xl px-4 py-6 sm:px-6">
-        <Link
-          href="/"
-          className="mb-4 inline-flex items-center gap-1 font-display text-xs font-bold text-accent"
-        >
-          <ChevronLeft className="h-3.5 w-3.5" aria-hidden /> All venues
-        </Link>
-
-        <h1 className="font-display text-2xl font-extrabold tracking-tight text-foreground sm:text-3xl">
-          {venue.name}
-        </h1>
-        <p className="mt-1.5 flex items-center gap-1 text-sm text-muted">
-          <MapPin className="h-3.5 w-3.5 flex-none" aria-hidden />
-          {[venue.district, venue.city, countryDisplayName(venue.country)]
-            .filter(Boolean)
-            .join(', ')}
-          <VenueDistance
-            latitude={venue.latitude}
-            longitude={venue.longitude}
-            className="font-semibold text-accent-strong"
-          />
-        </p>
-
-        {venue.description ? (
-          <p className="mt-4 max-w-xl text-sm leading-relaxed text-foreground">
-            {venue.description}
-          </p>
-        ) : null}
-
-        <p className="mt-8 font-display text-xs font-bold tracking-wide text-faint uppercase">
+        <p className="font-display text-xs font-bold tracking-wide text-faint uppercase">
           Facilities
         </p>
         {venueFacilities.length === 0 ? (
