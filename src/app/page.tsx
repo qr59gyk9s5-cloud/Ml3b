@@ -56,7 +56,9 @@ export default async function Home({ searchParams }: Props) {
   });
 
   const totalVenues = venues.length;
-  const totalSports = sportCategories.length;
+  // Live sports only — sportCategories now also includes "coming soon"
+  // ones (zero venues), which shouldn't inflate this trust stat.
+  const totalSports = sportCategories.filter((c) => c.venueCount > 0).length;
   const hasSelection = Boolean(sp.sport || sp.district);
 
   return (
@@ -191,6 +193,28 @@ export default async function Home({ searchParams }: Props) {
             </div>
             <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
               {sportCategories.map((cat) => {
+                if (cat.venueCount === 0) {
+                  // Not a filter link — nothing to browse to yet. Shown
+                  // as a real platform sport, just not live, rather than
+                  // silently omitted (see listSportCategories's doc
+                  // comment).
+                  return (
+                    <div
+                      key={cat.code}
+                      className="flex flex-col items-center gap-2 rounded-2xl border border-dashed border-line bg-surface-2/60 p-3.5 text-center opacity-70"
+                    >
+                      <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-surface text-faint">
+                        <SportIcon code={cat.code} className="h-5 w-5" />
+                      </span>
+                      <span className="font-display text-xs font-bold text-muted">
+                        {cat.displayName}
+                      </span>
+                      <span className="rounded-full bg-surface px-2 py-0.5 text-[9px] font-bold tracking-wide text-faint uppercase">
+                        Coming soon
+                      </span>
+                    </div>
+                  );
+                }
                 const active = sp.sport === cat.code;
                 const tone = sportTone(cat.code);
                 const href = active

@@ -267,39 +267,33 @@ body {
   }
 }
 
-/* Root loading.tsx's top progress bar — an indeterminate sweep (no real
- * percentage to report, this is Next's Suspense boundary showing while
- * a server component is fetching), same idea as GitHub/YouTube's top
- * bar. Mounted only while the boundary is active; unmounts on its own
- * once the page is ready, no JS timer needed. */
-@keyframes routeLoadingSweep {
-  0% {
-    transform: translateX(-100%) scaleX(0.4);
-  }
-  60% {
-    transform: translateX(20%) scaleX(0.6);
-  }
-  100% {
-    transform: translateX(100%) scaleX(0.4);
+/* Root loading.tsx's indicator — a spinning ball in a gradient badge
+ * (no real percentage to report, this is Next's Suspense boundary
+ * showing while a server component is fetching), floating top-center.
+ * Mounted only while the boundary is active; unmounts on its own once
+ * the page is ready, no JS timer needed. */
+@keyframes routeLoadingSpin {
+  to {
+    transform: rotate(360deg);
   }
 }
-.route-loading-bar {
+.route-loading-badge {
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 3px;
+  top: 14px;
+  left: 50%;
+  translate: -50% 0;
   z-index: 50;
-  overflow: hidden;
-  background: transparent;
+  display: flex;
+  height: 38px;
+  width: 38px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  background: linear-gradient(135deg, var(--accent), var(--accent-strong));
+  box-shadow: var(--shadow-lg);
 }
-.route-loading-bar::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  transform-origin: left center;
-  background: linear-gradient(90deg, var(--accent), var(--accent-bright));
-  animation: routeLoadingSweep 1s ease-in-out infinite;
+.route-loading-spin {
+  animation: routeLoadingSpin 0.7s linear infinite;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -312,9 +306,8 @@ body {
     opacity: 1 !important;
     transform: none !important;
   }
-  .route-loading-bar::after {
+  .route-loading-spin {
     animation: none !important;
-    transform: none !important;
   }
 }
 

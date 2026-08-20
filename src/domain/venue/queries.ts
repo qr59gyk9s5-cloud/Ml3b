@@ -40,10 +40,15 @@ export interface SportCategory {
   venueCount: number;
 }
 
-/** Sports actually offered by at least one active facility at an ACTIVE
- * venue, with a real venue count each — the home page's "browse by
- * sport" cards. Never a fixed/fabricated list: a sport with zero live
- * venues just doesn't appear. */
+/** Every sport the platform recognizes (sports.is_active), each with a
+ * real venue count — the home page's "browse by sport" cards. A sport
+ * with zero live venues still appears (venueCount: 0), rendered there
+ * as a "Coming soon" card rather than a live filter — never silently
+ * dropped, since the sports taxonomy itself (src/lib/db/schema/
+ * sports.ts) is real platform data, not something we'd want to fake by
+ * hiding what's not live yet. The count itself stays exactly as real
+ * as before: derived from actual active facilities at ACTIVE venues,
+ * never fabricated. */
 export async function listSportCategories(): Promise<SportCategory[]> {
   const db = getDb();
   const rows = await db
@@ -51,11 +56,13 @@ export async function listSportCategories(): Promise<SportCategory[]> {
       sportCode: sports.code,
       sportDisplayName: sports.displayName,
       venueId: venues.id,
+      facilityIsActive: facilities.isActive,
+      venueStatus: venues.status,
     })
-    .from(facilities)
-    .innerJoin(sports, eq(facilities.sportId, sports.id))
-    .innerJoin(venues, eq(facilities.venueId, venues.id))
-    .where(and(eq(facilities.isActive, true), eq(venues.status, 'ACTIVE')));
+    .from(sports)
+    .leftJoin(facilities, eq(facilities.sportId, sports.id))
+    .leftJoin(venues, eq(facilities.venueId, venues.id))
+    .where(eq(sports.isActive, true));
 
   const byCode = new Map<string, { displayName: string; venueIds: Set<string> }>();
   for (const row of rows) {
@@ -63,7 +70,9 @@ export async function listSportCategories(): Promise<SportCategory[]> {
       displayName: row.sportDisplayName,
       venueIds: new Set<string>(),
     };
-    entry.venueIds.add(row.venueId);
+    if (row.venueId && row.facilityIsActive && row.venueStatus === 'ACTIVE') {
+      entry.venueIds.add(row.venueId);
+    }
     byCode.set(row.sportCode, entry);
   }
 
