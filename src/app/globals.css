@@ -36,17 +36,19 @@
   --danger-wash: #fdeaea;
   --on-accent: #fffaf7;
 
-  /* Dark navy "chrome" — the header, hero, and footer bands that frame
-   * the app (a fixed dark surface, not theme-switched, so those bands
-   * read the same in light or dark OS mode — they're brand identity,
-   * not page content). --accent-bright/--on-ink-* are for text and
-   * icons placed on top of that chrome, since the regular
-   * foreground/muted tokens are tuned for light surfaces and would be
-   * unreadable on navy. */
-  --ink: #0b1220;
-  --ink-soft: #16213a;
+  /* Dark navy "chrome" — the header and hero bands that frame the app
+   * (a fixed dark surface, not theme-switched, so those bands read the
+   * same in light or dark OS mode — they're brand identity, not page
+   * content). Kept a lighter, richer navy rather than near-black so it
+   * reads as "premium dark accent," not "the page is dark" — a founder
+   * call after seeing the first (near-black) version felt too heavy.
+   * --accent-bright/--on-ink-* are for text and icons placed on top of
+   * that chrome, since the regular foreground/muted tokens are tuned
+   * for light surfaces and would be unreadable on navy. */
+  --ink: #17233f;
+  --ink-soft: #223257;
   --on-ink: #f1f5f9;
-  --on-ink-muted: #93a3c2;
+  --on-ink-muted: #a3b1cf;
   --accent-bright: #fb923c;
 
   /* "Alive" accent — every primary tap target (CTA buttons, the active

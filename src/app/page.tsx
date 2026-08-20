@@ -67,7 +67,7 @@ export default async function Home({ searchParams }: Props) {
          * feels vivid rather than just "a dark box". */}
         <div
           aria-hidden
-          className="pointer-events-none absolute inset-0 opacity-60"
+          className="pointer-events-none absolute inset-0 opacity-40"
           style={{
             background:
               'radial-gradient(ellipse 650px 420px at 10% -10%, color-mix(in oklch, var(--accent) 55%, transparent), transparent 65%), radial-gradient(ellipse 550px 400px at 100% 0%, color-mix(in oklch, var(--floodlight) 45%, transparent), transparent 60%), radial-gradient(ellipse 500px 500px at 85% 100%, color-mix(in oklch, var(--spectrum-violet) 45%, transparent), transparent 60%)',
@@ -75,7 +75,7 @@ export default async function Home({ searchParams }: Props) {
         />
         <div
           aria-hidden
-          className="animate-float pointer-events-none absolute -top-20 right-[-50px] h-64 w-64 rounded-full opacity-60 blur-[2px]"
+          className="animate-float pointer-events-none absolute -top-20 right-[-50px] h-64 w-64 rounded-full opacity-45 blur-[2px]"
           style={{
             background:
               'radial-gradient(circle at 32% 30%, var(--accent-glow), var(--accent-strong))',
@@ -83,7 +83,7 @@ export default async function Home({ searchParams }: Props) {
         />
         <div
           aria-hidden
-          className="animate-float pointer-events-none absolute top-20 right-32 h-32 w-32 rounded-full opacity-50 blur-[2px]"
+          className="animate-float pointer-events-none absolute top-20 right-32 h-32 w-32 rounded-full opacity-35 blur-[2px]"
           style={{
             background:
               'radial-gradient(circle at 32% 30%, var(--floodlight), var(--floodlight-strong))',
@@ -93,7 +93,7 @@ export default async function Home({ searchParams }: Props) {
         />
         <div
           aria-hidden
-          className="animate-float pointer-events-none absolute -bottom-14 left-6 h-32 w-32 rounded-full opacity-50 blur-[2px]"
+          className="animate-float pointer-events-none absolute -bottom-14 left-6 h-32 w-32 rounded-full opacity-35 blur-[2px]"
           style={{
             background:
               'radial-gradient(circle at 32% 30%, var(--spectrum-violet), var(--spectrum-violet))',
@@ -101,8 +101,15 @@ export default async function Home({ searchParams }: Props) {
             animationDuration: '8s',
           }}
         />
+        {/* Eases into the light page below instead of a hard dark-to-light
+         * cut — softens how much of the first screen reads as "dark". */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-x-0 bottom-0 h-16"
+          style={{ background: 'linear-gradient(to bottom, transparent, var(--background))' }}
+        />
 
-        <div className="animate-rise-up relative mx-auto max-w-5xl px-4 py-12 sm:px-6 sm:py-16">
+        <div className="animate-rise-up relative mx-auto max-w-5xl px-4 py-10 sm:px-6 sm:py-12">
           <p className="mb-3 flex items-center gap-1.5 font-display text-xs font-bold tracking-wide text-accent-bright uppercase">
             <MapPin className="h-3.5 w-3.5" aria-hidden />
             Cairo, Egypt
