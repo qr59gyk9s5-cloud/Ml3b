@@ -44,3 +44,18 @@ const SPORT_TONES: Record<string, { bg: string; text: string }> = {
 export function sportTone(code: string): { bg: string; text: string } {
   return SPORT_TONES[code] ?? { bg: 'bg-accent-wash', text: 'text-accent-strong' };
 }
+
+/** Solid (not washed-out) version of the same per-sport color, for
+ * spots that want the icon badge itself to carry real color — e.g. the
+ * home page's sport cards — rather than a pale tint plus a colored
+ * glyph. */
+const SPORT_SOLID_TONES: Record<string, string> = {
+  football: 'bg-lime-strong text-lime-ink',
+  basketball: 'bg-spectrum-coral text-white',
+  padel: 'bg-spectrum-sky text-white',
+  tennis: 'bg-spectrum-violet text-white',
+};
+
+export function sportSolidTone(code: string): string {
+  return SPORT_SOLID_TONES[code] ?? 'bg-accent text-white';
+}
