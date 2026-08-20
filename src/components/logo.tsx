@@ -24,13 +24,25 @@ export function LogoMark({ size = 28, gradient = true }: { size?: number; gradie
   );
 }
 
-export function Logo({ size = 26, className = '' }: { size?: number; className?: string }) {
+export function Logo({
+  size = 26,
+  className = '',
+  onDark = false,
+}: {
+  size?: number;
+  className?: string;
+  /** True on the dark navy header/hero chrome — swaps the wordmark's
+   * base color from --foreground (tuned for light surfaces) to --on-ink. */
+  onDark?: boolean;
+}) {
   return (
     <span className={`flex items-center gap-2 ${className}`}>
       <LogoMark size={size} />
-      <span className="font-display text-[15px] font-extrabold tracking-tight whitespace-nowrap text-foreground">
+      <span
+        className={`font-display text-[15px] font-extrabold tracking-tight whitespace-nowrap ${onDark ? 'text-on-ink' : 'text-foreground'}`}
+      >
         <span>Play</span>
-        <span className="text-accent-strong">Cairo</span>
+        <span className={onDark ? 'text-accent-bright' : 'text-accent-strong'}>Cairo</span>
       </span>
     </span>
   );

@@ -4,7 +4,16 @@ import { useLocation } from './location-provider';
 
 /** The header's live location indicator — see location-provider.tsx for
  * the detection logic this just renders. */
-export function LocationPill({ className = '' }: { className?: string }) {
+export function LocationPill({
+  className = '',
+  onDark = false,
+}: {
+  className?: string;
+  /** True on the dark navy header chrome — the pill itself is a
+   * self-contained light chip either way, but the trailing text button
+   * needs a lighter color to read against dark ink. */
+  onDark?: boolean;
+}) {
   const { status, label, detect } = useLocation();
 
   const display =
@@ -37,7 +46,9 @@ export function LocationPill({ className = '' }: { className?: string }) {
         <button
           type="button"
           onClick={detect}
-          className="focus-visible:outline-accent text-[11px] font-semibold text-faint transition-colors hover:text-accent-strong focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+          className={`focus-visible:outline-accent text-[11px] font-semibold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 ${
+            onDark ? 'text-on-ink-muted hover:text-on-ink' : 'text-faint hover:text-accent-strong'
+          }`}
         >
           {status === 'granted' ? 'Change' : 'Detect'}
         </button>

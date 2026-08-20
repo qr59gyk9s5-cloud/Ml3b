@@ -1,58 +1,75 @@
 @import 'tailwindcss';
 
 /*
- * Design tokens — "PlayCairo" premium light identity (see the design
- * canvas the founder approved). Same turf-green/floodlight-amber hue
- * family as the original "night pitch / floodlight" palette, elevated:
- * oklch-authored colors, a confident type pairing (Manrope display +
- * Plus Jakarta Sans body — src/app/layout.tsx), glassy depth, and a
- * deliberate motion language (this file's @keyframes, used sparingly
- * and consistently rather than scattered per-component ad-hoc).
- * Light palette on :root; dark palette under prefers-color-scheme.
+ * Design tokens — "PlayCairo" premium identity, v2: deep navy + vibrant
+ * orange (replaces the earlier turf-green/beige palette per founder
+ * feedback — green-on-cream read as flat, not premium). Navy is the
+ * brand's "structure" color (header, hero, footer chrome — the app's
+ * frame); orange is the single "go" color (every primary tap target:
+ * CTA buttons, active nav/filter state, focus rings). oklch-authored
+ * shadows, the same type pairing (Manrope display + Plus Jakarta Sans
+ * body — src/app/layout.tsx), glassy depth, and the existing motion
+ * language (this file's @keyframes) are unchanged — only the color
+ * values moved. Light palette on :root; dark palette under
+ * prefers-color-scheme. Because every component consumes these tokens
+ * (bg-accent, text-floodlight, ...) rather than hardcoded hex, this
+ * file is the entire palette — no component file needed to change to
+ * pick up the new identity.
  */
 :root {
-  --background: #f7f8f5;
+  --background: #f5f7fb;
   --surface: #ffffff;
-  --surface-2: #f0f2ec;
-  --foreground: #16261f;
-  --foreground-soft: #33473c;
-  --muted: #5c6f64;
-  --faint: #8a9a90;
-  --line: #e2e7dd;
-  --accent: #157a49;
-  --accent-strong: #0f5c37;
-  --accent-wash: #e4f3ea;
-  --accent-glow: #3ec982;
-  --floodlight: #d98a1f;
-  --floodlight-strong: #a35f14;
-  --floodlight-wash: #fcefd9;
-  --danger: #b3392a;
-  --danger-wash: #f8e4e0;
-  --on-accent: #fbfffc;
+  --surface-2: #eef1f7;
+  --foreground: #0f172a;
+  --foreground-soft: #334155;
+  --muted: #64748b;
+  --faint: #94a3b8;
+  --line: #e2e8f0;
+  --accent: #ea580c;
+  --accent-strong: #c2410c;
+  --accent-wash: #fff1e8;
+  --accent-glow: #fb923c;
+  --floodlight: #2563eb;
+  --floodlight-strong: #1d4ed8;
+  --floodlight-wash: #eaf1ff;
+  --danger: #dc2626;
+  --danger-wash: #fdeaea;
+  --on-accent: #fffaf7;
 
-  /* "Alive" accent — the electric lime the founder's reference uses for
-   * every primary tap target (CTA buttons, the active nav pill, rating
-   * badges). Sits alongside the turf-green identity rather than
-   * replacing it: green is the brand's "place" color (venues, pitches,
-   * hero surfaces), lime is the "go" color (things you can tap right
-   * now). Dark ink text on lime, never white — lime is too light for
-   * white-on-lime contrast. */
-  --lime: #cdf24e;
-  --lime-strong: #a8d626;
-  --lime-wash: #f1fbd9;
-  --lime-ink: #223109;
+  /* Dark navy "chrome" — the header, hero, and footer bands that frame
+   * the app (a fixed dark surface, not theme-switched, so those bands
+   * read the same in light or dark OS mode — they're brand identity,
+   * not page content). --accent-bright/--on-ink-* are for text and
+   * icons placed on top of that chrome, since the regular
+   * foreground/muted tokens are tuned for light surfaces and would be
+   * unreadable on navy. */
+  --ink: #0b1220;
+  --ink-soft: #16213a;
+  --on-ink: #f1f5f9;
+  --on-ink-muted: #93a3c2;
+  --accent-bright: #fb923c;
 
-  /* A small warm/cool spectrum cycled across sport badges, area cards,
-   * and category tiles purely for visual variety and liveliness — never
+  /* "Alive" accent — every primary tap target (CTA buttons, the active
+   * nav pill, rating badges) uses this alongside --accent so the two
+   * read as one consistent "go" family rather than competing hues.
+   * Dark ink text on it, never white — too light for white-on-it
+   * contrast. */
+  --lime: #67e8f9;
+  --lime-strong: #22d3ee;
+  --lime-wash: #ecfeff;
+  --lime-ink: #083344;
+
+  /* A small spectrum cycled across sport badges, area cards, and
+   * category tiles purely for visual variety and liveliness — never
    * meaningful (a sport isn't "the coral one"), just a rotation so the
-   * grid doesn't read as one flat green wash. See src/components/
+   * grid doesn't read as one flat wash. See src/components/
    * sport-icon.tsx's sportTone() for the code → tone mapping. */
-  --spectrum-coral: #e8603c;
-  --spectrum-coral-wash: #fbe6df;
-  --spectrum-sky: #1c86c9;
-  --spectrum-sky-wash: #dcf0fb;
-  --spectrum-violet: #7a54c9;
-  --spectrum-violet-wash: #ece4fa;
+  --spectrum-coral: #e11d48;
+  --spectrum-coral-wash: #fde8ee;
+  --spectrum-sky: #0284c7;
+  --spectrum-sky-wash: #e0f2fe;
+  --spectrum-violet: #7c3aed;
+  --spectrum-violet-wash: #f1e8fd;
 }
 
 @theme inline {
@@ -74,6 +91,11 @@
   --color-danger: var(--danger);
   --color-danger-wash: var(--danger-wash);
   --color-on-accent: var(--on-accent);
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+  --color-on-ink: var(--on-ink);
+  --color-on-ink-muted: var(--on-ink-muted);
+  --color-accent-bright: var(--accent-bright);
   --color-lime: var(--lime);
   --color-lime-strong: var(--lime-strong);
   --color-lime-wash: var(--lime-wash);
@@ -89,44 +111,53 @@
   --font-mono: var(--font-geist-mono);
   /* Not theme-switched (same in light/dark) — literal values here rather
    * than round-tripped through :root, unlike the colors above. */
-  --shadow-sm: 0 1px 2px oklch(21% 0.03 155 / 0.06), 0 1px 1px oklch(21% 0.03 155 / 0.04);
-  --shadow-md: 0 10px 28px oklch(21% 0.03 155 / 0.1);
-  --shadow-lg: 0 24px 56px oklch(21% 0.03 155 / 0.16);
-  --shadow-accent: 0 14px 30px oklch(45% 0.14 155 / 0.32);
+  --shadow-sm: 0 1px 2px oklch(21% 0.02 260 / 0.06), 0 1px 1px oklch(21% 0.02 260 / 0.04);
+  --shadow-md: 0 10px 28px oklch(21% 0.02 260 / 0.1);
+  --shadow-lg: 0 24px 56px oklch(21% 0.02 260 / 0.16);
+  --shadow-accent: 0 14px 30px oklch(60% 0.19 45 / 0.35);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a120e;
-    --surface: #142720;
-    --surface-2: #0f2019;
-    --foreground: #eaf2ec;
-    --foreground-soft: #cfe0d6;
-    --muted: #9bb0a6;
-    --faint: #5f7568;
-    --line: #24372f;
-    --accent: #3fa96b;
-    --accent-strong: #59c687;
-    --accent-wash: #16302380;
-    --accent-glow: #59c687;
-    --floodlight: #f0b44a;
-    --floodlight-strong: #f6c876;
-    --floodlight-wash: #3a2c1180;
-    --danger: #e17b67;
-    --danger-wash: #3a201880;
-    --on-accent: #052e16;
+    --background: #060b14;
+    --surface: #101827;
+    --surface-2: #0b1220;
+    --foreground: #f1f5f9;
+    --foreground-soft: #cbd5e1;
+    --muted: #94a3b8;
+    --faint: #64748b;
+    --line: #1e293b;
+    --accent: #fb923c;
+    --accent-strong: #f97316;
+    --accent-wash: #7c2d0d80;
+    --accent-glow: #fdba74;
+    --floodlight: #60a5fa;
+    --floodlight-strong: #93c5fd;
+    --floodlight-wash: #1e3a8a80;
+    --danger: #f87171;
+    --danger-wash: #7f1d1d80;
+    --on-accent: #2b1200;
 
-    --lime: #d8f56a;
-    --lime-strong: #e8ff8f;
-    --lime-wash: #263405b3;
-    --lime-ink: #16220a;
+    /* Chrome is already dark in light mode, so it barely shifts here —
+     * just a touch darker than --surface so header/hero still read as
+     * a distinct band against the page. */
+    --ink: #04070d;
+    --ink-soft: #0c1424;
+    --on-ink: #f1f5f9;
+    --on-ink-muted: #93a3c2;
+    --accent-bright: #fb923c;
 
-    --spectrum-coral: #f0917a;
-    --spectrum-coral-wash: #3a1e1780;
-    --spectrum-sky: #6fc1ee;
-    --spectrum-sky-wash: #142a3880;
-    --spectrum-violet: #ab8ee8;
-    --spectrum-violet-wash: #241c3880;
+    --lime: #67e8f9;
+    --lime-strong: #22d3ee;
+    --lime-wash: #164e6380;
+    --lime-ink: #ecfeff;
+
+    --spectrum-coral: #fb7185;
+    --spectrum-coral-wash: #4c051580;
+    --spectrum-sky: #38bdf8;
+    --spectrum-sky-wash: #0c4a6e80;
+    --spectrum-violet: #a78bfa;
+    --spectrum-violet-wash: #2e105f80;
   }
 }
 
@@ -234,6 +265,41 @@ body {
   }
 }
 
+/* Root loading.tsx's top progress bar — an indeterminate sweep (no real
+ * percentage to report, this is Next's Suspense boundary showing while
+ * a server component is fetching), same idea as GitHub/YouTube's top
+ * bar. Mounted only while the boundary is active; unmounts on its own
+ * once the page is ready, no JS timer needed. */
+@keyframes routeLoadingSweep {
+  0% {
+    transform: translateX(-100%) scaleX(0.4);
+  }
+  60% {
+    transform: translateX(20%) scaleX(0.6);
+  }
+  100% {
+    transform: translateX(100%) scaleX(0.4);
+  }
+}
+.route-loading-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  z-index: 50;
+  overflow: hidden;
+  background: transparent;
+}
+.route-loading-bar::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  transform-origin: left center;
+  background: linear-gradient(90deg, var(--accent), var(--accent-bright));
+  animation: routeLoadingSweep 1s ease-in-out infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .animate-rise-up,
   .animate-float,
@@ -242,6 +308,10 @@ body {
   .animate-shimmer {
     animation: none !important;
     opacity: 1 !important;
+    transform: none !important;
+  }
+  .route-loading-bar::after {
+    animation: none !important;
     transform: none !important;
   }
 }

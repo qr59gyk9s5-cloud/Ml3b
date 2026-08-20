@@ -18,13 +18,15 @@ import { SportIcon, sportSolidTone, sportTone } from '@/components/sport-icon';
 import { VenueGrid } from '@/components/venue-grid';
 import { LocateButton } from '@/components/locate-button';
 
-// Compact, single-row version — a full section with body copy per step
-// read as too long for what it's saying; icon + word carries the same
-// "find → request → play" idea inline, right in the hero.
-const HOW_IT_WORKS = [
-  { icon: MousePointerClick, label: 'Find a slot' },
-  { icon: Zap, label: 'Send a request' },
-  { icon: CalendarCheck, label: 'Play' },
+// One consistent row of icon-chip + label items — how-it-works and the
+// trust stats used to be two separate rows with two different icon
+// treatments (chips vs. bare colored glyphs); merged into one so the
+// hero reads as one deliberate strip, not two competing ones. `href` is
+// only set on the items that actually link somewhere.
+const HERO_CHIPS = [
+  { icon: MousePointerClick, label: 'Find a slot', tone: 'bg-accent' },
+  { icon: Zap, label: 'Send a request', tone: 'bg-floodlight' },
+  { icon: CalendarCheck, label: 'Play', tone: 'bg-spectrum-violet' },
 ] as const;
 
 /**
@@ -55,24 +57,25 @@ export default async function Home({ searchParams }: Props) {
 
   const totalVenues = venues.length;
   const totalSports = sportCategories.length;
+  const hasSelection = Boolean(sp.sport || sp.district);
 
   return (
     <main>
-      <section className="relative overflow-hidden border-b border-line bg-surface-2">
-        {/* Mesh backdrop — a wash of color across the whole hero, not just
-         * three small dots, so the first screen reads as vivid rather
-         * than mostly white with a little decoration in the corner. */}
+      <section className="relative overflow-hidden bg-ink">
+        {/* Glow backdrop — saturated color (not pale washes, which read
+         * as near-invisible on a dark surface) so the dark hero still
+         * feels vivid rather than just "a dark box". */}
         <div
           aria-hidden
-          className="pointer-events-none absolute inset-0 opacity-90"
+          className="pointer-events-none absolute inset-0 opacity-60"
           style={{
             background:
-              'radial-gradient(ellipse 700px 420px at 15% -10%, var(--accent-wash), transparent 60%), radial-gradient(ellipse 600px 400px at 100% 0%, var(--floodlight-wash), transparent 50%), radial-gradient(ellipse 500px 500px at 90% 100%, var(--lime-wash), transparent 55%), radial-gradient(ellipse 400px 400px at 0% 100%, var(--spectrum-sky-wash), transparent 55%)',
+              'radial-gradient(ellipse 650px 420px at 10% -10%, color-mix(in oklch, var(--accent) 55%, transparent), transparent 65%), radial-gradient(ellipse 550px 400px at 100% 0%, color-mix(in oklch, var(--floodlight) 45%, transparent), transparent 60%), radial-gradient(ellipse 500px 500px at 85% 100%, color-mix(in oklch, var(--spectrum-violet) 45%, transparent), transparent 60%)',
           }}
         />
         <div
           aria-hidden
-          className="animate-float pointer-events-none absolute -top-20 right-[-50px] h-64 w-64 rounded-full opacity-50 blur-[2px]"
+          className="animate-float pointer-events-none absolute -top-20 right-[-50px] h-64 w-64 rounded-full opacity-60 blur-[2px]"
           style={{
             background:
               'radial-gradient(circle at 32% 30%, var(--accent-glow), var(--accent-strong))',
@@ -80,7 +83,7 @@ export default async function Home({ searchParams }: Props) {
         />
         <div
           aria-hidden
-          className="animate-float pointer-events-none absolute top-20 right-32 h-32 w-32 rounded-full opacity-40 blur-[2px]"
+          className="animate-float pointer-events-none absolute top-20 right-32 h-32 w-32 rounded-full opacity-50 blur-[2px]"
           style={{
             background:
               'radial-gradient(circle at 32% 30%, var(--floodlight), var(--floodlight-strong))',
@@ -90,41 +93,32 @@ export default async function Home({ searchParams }: Props) {
         />
         <div
           aria-hidden
-          className="animate-float pointer-events-none absolute -bottom-14 left-6 h-32 w-32 rounded-full opacity-40 blur-[2px]"
+          className="animate-float pointer-events-none absolute -bottom-14 left-6 h-32 w-32 rounded-full opacity-50 blur-[2px]"
           style={{
-            background: 'radial-gradient(circle at 32% 30%, var(--lime), var(--lime-strong))',
+            background:
+              'radial-gradient(circle at 32% 30%, var(--spectrum-violet), var(--spectrum-violet))',
             animationDelay: '1.4s',
             animationDuration: '8s',
           }}
         />
-        <div
-          aria-hidden
-          className="animate-float pointer-events-none absolute top-1/2 left-1/3 h-20 w-20 rounded-full opacity-25 blur-[2px]"
-          style={{
-            background:
-              'radial-gradient(circle at 32% 30%, var(--spectrum-sky), var(--spectrum-sky))',
-            animationDelay: '2.2s',
-            animationDuration: '10s',
-          }}
-        />
 
-        <div className="animate-rise-up relative mx-auto max-w-5xl px-4 py-10 sm:px-6 sm:py-14">
-          <p className="mb-3 flex items-center gap-1.5 font-display text-xs font-bold tracking-wide text-accent-strong uppercase">
+        <div className="animate-rise-up relative mx-auto max-w-5xl px-4 py-12 sm:px-6 sm:py-16">
+          <p className="mb-3 flex items-center gap-1.5 font-display text-xs font-bold tracking-wide text-accent-bright uppercase">
             <MapPin className="h-3.5 w-3.5" aria-hidden />
             Cairo, Egypt
           </p>
-          <h1 className="max-w-2xl font-display text-4xl font-extrabold tracking-tight text-foreground sm:text-5xl">
+          <h1 className="max-w-2xl font-display text-4xl font-extrabold tracking-tight text-on-ink sm:text-5xl">
             Find your court, and{' '}
-            <span className="bg-gradient-to-br from-accent via-floodlight to-lime-strong bg-clip-text text-transparent">
+            <span className="bg-gradient-to-br from-accent-bright via-floodlight to-spectrum-violet bg-clip-text text-transparent">
               play in seconds
             </span>
           </h1>
-          <p className="mt-4 max-w-lg text-base leading-relaxed text-muted">
+          <p className="mt-4 max-w-lg text-base leading-relaxed text-on-ink-muted">
             Real-time availability from venues across Cairo — send a request, the venue confirms,
             you play.
           </p>
 
-          <div className="mt-6 flex max-w-md items-center gap-2 rounded-2xl border border-line bg-surface p-1.5 shadow-md">
+          <div className="mt-6 flex max-w-md items-center gap-2 rounded-2xl bg-surface p-1.5 shadow-lg">
             <Search className="ml-2 h-4 w-4 flex-none text-faint" aria-hidden />
             <input
               type="text"
@@ -135,24 +129,19 @@ export default async function Home({ searchParams }: Props) {
             <LocateButton />
           </div>
 
-          {/* Compact "how it works" + trust stats, one row, icons carrying
-           * the color instead of a whole separate section below. */}
-          <div className="mt-6 flex flex-wrap items-center gap-x-5 gap-y-3">
-            {HOW_IT_WORKS.map(({ icon: Icon, label }, i) => (
-              <span
-                key={label}
-                className="flex items-center gap-1.5 text-xs font-bold text-foreground-soft"
-              >
+          {/* One row: how-it-works + trust stats, same icon-chip
+           * treatment throughout instead of two visually different rows. */}
+          <div className="mt-7 flex flex-wrap items-center gap-x-5 gap-y-3">
+            {HERO_CHIPS.map(({ icon: Icon, label, tone }, i) => (
+              <span key={label} className="flex items-center gap-1.5">
                 <span
-                  className={`flex h-6 w-6 items-center justify-center rounded-lg text-white ${
-                    ['bg-accent-strong', 'bg-floodlight-strong', 'bg-spectrum-violet'][i]
-                  }`}
+                  className={`flex h-6 w-6 items-center justify-center rounded-lg text-white ${tone}`}
                 >
                   <Icon className="h-3.5 w-3.5" aria-hidden />
                 </span>
-                {label}
-                {i < HOW_IT_WORKS.length - 1 ? (
-                  <span aria-hidden className="text-faint">
+                <span className="text-xs font-bold text-on-ink">{label}</span>
+                {i < HERO_CHIPS.length - 1 ? (
+                  <span aria-hidden className="text-on-ink-muted">
                     →
                   </span>
                 ) : null}
@@ -160,18 +149,18 @@ export default async function Home({ searchParams }: Props) {
             ))}
           </div>
 
-          <div className="mt-4 flex flex-wrap gap-x-6 gap-y-2 border-t border-line/70 pt-4">
-            <span className="flex items-center gap-1.5 text-xs font-bold text-foreground-soft">
-              <ShieldCheck className="h-4 w-4 text-accent-strong" aria-hidden />
+          <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2 border-t border-white/10 pt-4">
+            <span className="flex items-center gap-1.5 text-xs font-bold text-on-ink-muted">
+              <ShieldCheck className="h-4 w-4 text-accent-bright" aria-hidden />
               {totalVenues} live venue{totalVenues === 1 ? '' : 's'}
             </span>
-            <span className="flex items-center gap-1.5 text-xs font-bold text-foreground-soft">
-              <Sparkles className="h-4 w-4 text-floodlight" aria-hidden />
+            <span className="flex items-center gap-1.5 text-xs font-bold text-on-ink-muted">
+              <Sparkles className="h-4 w-4 text-accent-bright" aria-hidden />
               {totalSports} sport{totalSports === 1 ? '' : 's'}
             </span>
             <Link
               href="/games"
-              className="flex items-center gap-1.5 text-xs font-bold text-spectrum-violet transition-colors hover:underline"
+              className="flex items-center gap-1.5 text-xs font-bold text-on-ink transition-colors hover:text-accent-bright"
             >
               <Users className="h-4 w-4" aria-hidden />
               Open games — join a match
@@ -313,24 +302,41 @@ export default async function Home({ searchParams }: Props) {
         </section>
 
         <section className="py-6">
-          <h2 className="mb-4 font-display text-sm font-bold tracking-wide text-faint uppercase">
-            {filtered.length > 0
-              ? `${filtered.length} venue${filtered.length === 1 ? '' : 's'}${sp.sport || sp.district ? ' match' : ' open now'}`
-              : 'Venues'}
-          </h2>
-
           {venues.length === 0 ? (
-            <div className="flex flex-col items-center gap-2 rounded-2xl border border-dashed border-line px-6 py-16 text-center">
-              <span aria-hidden className="text-2xl">
-                🏟️
+            <>
+              <h2 className="mb-4 font-display text-sm font-bold tracking-wide text-faint uppercase">
+                Venues
+              </h2>
+              <div className="flex flex-col items-center gap-2 rounded-2xl border border-dashed border-line px-6 py-16 text-center">
+                <span aria-hidden className="text-2xl">
+                  🏟️
+                </span>
+                <p className="text-sm font-medium text-foreground">No venues are live yet</p>
+                <p className="max-w-sm text-xs text-muted">
+                  Venues appear here once a platform admin approves them. Check back soon.
+                </p>
+              </div>
+            </>
+          ) : hasSelection ? (
+            <>
+              <h2 className="mb-4 font-display text-sm font-bold tracking-wide text-faint uppercase">
+                {filtered.length} venue{filtered.length === 1 ? '' : 's'} match
+              </h2>
+              <VenueGrid venues={filtered} />
+            </>
+          ) : (
+            // Nothing renders until a sport or area is picked above —
+            // browsing is guided through the category cards rather than
+            // dumping the full venue list on first load.
+            <div className="flex flex-col items-center gap-2 rounded-2xl border border-dashed border-line px-6 py-14 text-center">
+              <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-accent-wash text-accent-strong">
+                <MousePointerClick className="h-5 w-5" aria-hidden />
               </span>
-              <p className="text-sm font-medium text-foreground">No venues are live yet</p>
+              <p className="text-sm font-bold text-foreground">Pick a sport or area above</p>
               <p className="max-w-sm text-xs text-muted">
-                Venues appear here once a platform admin approves them. Check back soon.
+                Venues show up here once you choose a sport or area to browse.
               </p>
             </div>
-          ) : (
-            <VenueGrid venues={filtered} />
           )}
         </section>
       </div>

@@ -91,7 +91,7 @@ export default async function OpenGameDetailPage({ params, searchParams }: Props
         <ChevronLeft className="h-3.5 w-3.5" aria-hidden /> Open games
       </Link>
 
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-accent via-accent-strong to-[#0a1f14] p-6">
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-accent via-accent-strong to-[var(--ink)] p-6">
         <span
           aria-hidden
           className="pointer-events-none absolute inset-0 opacity-60"
