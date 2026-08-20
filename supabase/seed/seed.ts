@@ -92,14 +92,15 @@ async function main() {
       slug: 'football-pitch-1',
       bookingMode: 'REQUEST_TO_BOOK',
       // 30-min granularity (not 60) so 90-minute matches — a standard
-      // 5-a-side/7-a-side length, and what customers actually asked for
-      // — are a reachable duration option alongside 60 and 120. See
-      // computeDurationOptions (src/lib/booking/slot-picker.ts): options
-      // step from minimumDurationMinutes by slotDurationMinutes, so a
-      // 60-min step could only ever offer 60/120.
+      // 5-a-side/7-a-side match length, and the only duration beyond the
+      // 60-min minimum football is ever booked for — are a reachable
+      // duration option. See computeDurationOptions
+      // (src/lib/booking/slot-picker.ts): options step from
+      // minimumDurationMinutes by slotDurationMinutes, so a 60-min step
+      // could only ever offer 60/120, never the in-between 90.
       slotDurationMinutes: 30,
       minimumDurationMinutes: 60,
-      maximumDurationMinutes: 120,
+      maximumDurationMinutes: 90,
       basePriceMinor: 50000,
       currency: 'EGP',
     });
@@ -110,7 +111,7 @@ async function main() {
       bookingMode: 'REQUEST_TO_BOOK',
       slotDurationMinutes: 30,
       minimumDurationMinutes: 60,
-      maximumDurationMinutes: 120,
+      maximumDurationMinutes: 90,
       basePriceMinor: 50000,
       currency: 'EGP',
     });

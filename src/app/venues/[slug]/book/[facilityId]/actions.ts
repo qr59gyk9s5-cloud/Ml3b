@@ -28,6 +28,7 @@ export async function requestBookingAction(formData: FormData) {
 
   const startAtRaw = formData.get('startAt');
   const durationRaw = formData.get('durationMinutes');
+  const idempotencyKeyRaw = formData.get('idempotencyKey');
 
   try {
     await createBookingRequest(
@@ -36,6 +37,7 @@ export async function requestBookingAction(formData: FormData) {
         facilityId,
         startAt: new Date(String(startAtRaw)),
         durationMinutes: Number(durationRaw),
+        idempotencyKey: idempotencyKeyRaw ? String(idempotencyKeyRaw) : undefined,
       },
     );
   } catch (err) {

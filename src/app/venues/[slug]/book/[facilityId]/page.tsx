@@ -8,6 +8,8 @@ import { addLocalDays, todayInTimeZone } from '@/domain/availability/time';
 import { formatPriceMinor } from '@/lib/format/money';
 import { getSessionActor } from '@/lib/auth/session';
 import { SportIcon } from '@/components/sport-icon';
+import { RequestSlotButton } from '@/components/booking/request-slot-button';
+import { DateJumpInput } from '@/components/booking/date-jump-input';
 import {
   computeDurationOptions,
   computeValidStartIndexes,
@@ -53,7 +55,10 @@ export default async function BookFacilityPage({ params, searchParams }: Props) 
   const validStartIndexes = computeValidStartIndexes(slots, slotsNeeded);
 
   const actor = await getSessionActor();
-  const dayLinks = Array.from({ length: 7 }, (_, i) => addLocalDays(today, i));
+  // A rolling 14-day window of quick-pick chips; DateJumpInput below
+  // covers anything further out — venues take bookings well past two
+  // weeks, and the chip strip alone couldn't reach any of that.
+  const dayLinks = Array.from({ length: 14 }, (_, i) => addLocalDays(today, i));
   const pricePerBooking = Math.round((facility.basePriceMinor * duration) / 60);
 
   return (
@@ -110,11 +115,19 @@ export default async function BookFacilityPage({ params, searchParams }: Props) 
         </div>
       ) : null}
 
-      <div className="mt-6 flex items-center gap-1.5">
-        <CalendarDays className="h-3.5 w-3.5 text-faint" aria-hidden />
-        <span className="font-display text-xs font-bold text-foreground-soft">
-          {formatMonthYear(date)}
+      <div className="mt-6 flex items-center justify-between gap-3">
+        <span className="flex items-center gap-1.5">
+          <CalendarDays className="h-3.5 w-3.5 text-faint" aria-hidden />
+          <span className="font-display text-xs font-bold text-foreground-soft">
+            {formatMonthYear(date)}
+          </span>
         </span>
+        <DateJumpInput
+          basePath={`/venues/${slug}/book/${facilityId}`}
+          date={date}
+          duration={duration}
+          min={today}
+        />
       </div>
 
       <div className="mt-3 flex items-center gap-2 overflow-x-auto pb-2">
@@ -177,18 +190,18 @@ export default async function BookFacilityPage({ params, searchParams }: Props) 
                 <input type="hidden" name="date" value={date} />
                 <input type="hidden" name="startAt" value={start.toISOString()} />
                 <input type="hidden" name="durationMinutes" value={duration} />
-                <button
-                  type="submit"
+                {/* One key per render of this button — repeat clicks on it
+                 * (the double-submit that used to create duplicate
+                 * REQUESTED bookings for the same slot) collapse into the
+                 * same request server-side; see createBookingRequest's
+                 * idempotencyKey replay logic. A later page load — a real
+                 * retry — gets a fresh key. */}
+                <input type="hidden" name="idempotencyKey" value={crypto.randomUUID()} />
+                <RequestSlotButton
+                  startLabel={formatSlotTime(start, venue.timezone)}
+                  endLabel={formatSlotTime(end, venue.timezone)}
                   title={actor ? 'Request this slot' : 'Sign in to request this slot'}
-                  className="focus-visible:outline-accent flex w-full flex-col items-center rounded-xl border border-line bg-surface px-2 py-2.5 text-center transition-all duration-200 hover:-translate-y-0.5 hover:border-accent hover:bg-accent-wash hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
-                >
-                  <span className="font-display text-xs font-bold text-foreground">
-                    {formatSlotTime(start, venue.timezone)}
-                  </span>
-                  <span className="text-[10px] text-faint">
-                    – {formatSlotTime(end, venue.timezone)}
-                  </span>
-                </button>
+                />
               </form>
             );
           })}
