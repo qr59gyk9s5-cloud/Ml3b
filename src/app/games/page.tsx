@@ -31,8 +31,10 @@ export default async function OpenGamesPage() {
 
   return (
     <main className="mx-auto max-w-2xl px-4 py-6 sm:px-6">
-      <div className="mb-1 flex items-center gap-2">
-        <Users className="h-5 w-5 text-accent-strong" aria-hidden />
+      <div className="mb-3 flex items-center gap-3">
+        <span className="flex h-11 w-11 flex-none items-center justify-center rounded-xl bg-accent-wash text-accent-strong">
+          <Users className="h-5 w-5" aria-hidden />
+        </span>
         <h1 className="font-display text-xl font-extrabold tracking-tight text-foreground">
           Open games
         </h1>
