@@ -2,29 +2,57 @@ import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
 import type { Metadata } from 'next';
 import {
-  CalendarClock,
+  CalendarDays,
   CheckCircle2,
   ChevronLeft,
   LayoutDashboard,
   Plus,
+  Trash2,
+  UserPlus,
+  Users,
   XCircle,
 } from 'lucide-react';
 import { getSessionActor } from '@/lib/auth/session';
 import { getVenueByIdForStaff } from '@/domain/venue/staff-queries';
 import { resolveVenueAuthzContext } from '@/domain/venue/authz-context';
+import { canManageVenueStaff, canRemoveVenueMember } from '@/domain/authz/venue';
 import { listActiveFacilities } from '@/domain/venue/queries';
 import { listBookingsForVenueWithDetails } from '@/domain/booking/queries';
+import { listVenueStaff } from '@/domain/venue/staff';
+import { addLocalDays, todayInTimeZone } from '@/domain/availability/time';
+import { formatDayChip, formatMonthYear } from '@/lib/booking/slot-picker';
 import { DomainError } from '@/domain/errors';
-import { VENUE_CANCELLATION_REASON } from '@/lib/config/constants';
+import { VENUE_CANCELLATION_REASON, VENUE_ROLE } from '@/lib/config/constants';
 import { VENUE_REASON_LABEL } from '@/lib/format/booking-status';
 import { formatPriceMinor } from '@/lib/format/money';
-import { now } from '@/lib/time/now';
-import { confirmRequestAction, rejectRequestAction } from './actions';
+import {
+  confirmRequestAction,
+  rejectRequestAction,
+  addStaffAction,
+  removeStaffAction,
+} from './actions';
 
 type Props = {
   params: Promise<{ venueId: string }>;
-  searchParams: Promise<{ error?: string; confirmed?: string; rejected?: string; manual?: string }>;
+  searchParams: Promise<{
+    error?: string;
+    confirmed?: string;
+    rejected?: string;
+    manual?: string;
+    staffAdded?: string;
+    staffRemoved?: string;
+    day?: string;
+  }>;
 };
+
+function formatTime(date: Date, timeZone: string): string {
+  return new Intl.DateTimeFormat('en-GB', {
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+    timeZone,
+  }).format(date);
+}
 
 function formatDateTime(date: Date, timeZone: string): string {
   return new Intl.DateTimeFormat('en-GB', {
@@ -65,17 +93,33 @@ export default async function VenueDashboardPage({ params, searchParams }: Props
   }
 
   const venueActor = { userId: actor.userId, isPlatformAdmin: actor.isPlatformAdmin };
-  const [ctx, requests, confirmed, venueFacilities] = await Promise.all([
+  const [ctx, requests, confirmed, venueFacilities, staff] = await Promise.all([
     resolveVenueAuthzContext(venueId, venueActor),
     listBookingsForVenueWithDetails(venueId, venueActor, { status: 'REQUESTED' }),
     listBookingsForVenueWithDetails(venueId, venueActor, { status: 'CONFIRMED' }),
     listActiveFacilities(venueId),
+    listVenueStaff(venueId, venueActor),
   ]);
 
-  const currentTime = now();
-  const upcomingConfirmed = confirmed
-    .filter((b) => b.startAt.getTime() > currentTime)
-    .sort((a, b) => a.startAt.getTime() - b.startAt.getTime());
+  const today = todayInTimeZone(venue.timezone);
+  const selectedDay = sp.day && /^\d{4}-\d{2}-\d{2}$/.test(sp.day) ? sp.day : today;
+  const dayLinks = Array.from({ length: 14 }, (_, i) => addLocalDays(today, i));
+
+  // Bucket confirmed bookings by their local calendar date at the venue,
+  // once — the day strip's per-day dot and the agenda list below both
+  // read from this instead of re-scanning `confirmed` per render.
+  const confirmedByDay = new Map<string, typeof confirmed>();
+  for (const booking of confirmed) {
+    const day = todayInTimeZone(venue.timezone, booking.startAt);
+    const bucket = confirmedByDay.get(day);
+    if (bucket) bucket.push(booking);
+    else confirmedByDay.set(day, [booking]);
+  }
+  const dayAgenda = (confirmedByDay.get(selectedDay) ?? []).sort(
+    (a, b) => a.startAt.getTime() - b.startAt.getTime(),
+  );
+
+  const canAddStaff = canManageVenueStaff(ctx);
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-6 sm:px-6">
@@ -131,6 +175,16 @@ export default async function VenueDashboardPage({ params, searchParams }: Props
       {sp.manual ? (
         <p className="mb-4 rounded-xl bg-accent-wash px-3 py-2.5 text-sm font-medium text-accent-strong">
           Walk-in booking added.
+        </p>
+      ) : null}
+      {sp.staffAdded ? (
+        <p className="mb-4 rounded-xl bg-accent-wash px-3 py-2.5 text-sm font-medium text-accent-strong">
+          Staff member added.
+        </p>
+      ) : null}
+      {sp.staffRemoved ? (
+        <p className="mb-4 rounded-xl bg-surface-2 px-3 py-2.5 text-sm font-medium text-muted">
+          Staff member removed.
         </p>
       ) : null}
 
@@ -215,18 +269,59 @@ export default async function VenueDashboardPage({ params, searchParams }: Props
         )}
       </section>
 
+      {/* Calendar — a day strip (dot = at least one confirmed booking that
+       * day) plus that day's agenda below, instead of one long flat list
+       * of everything upcoming. Same day-chip language as the customer
+       * booking page. */}
       <section className="mt-8">
-        <h2 className="mb-2 flex items-center gap-1.5 text-xs font-bold tracking-wide text-faint uppercase">
-          <CalendarClock className="h-3.5 w-3.5" aria-hidden />
-          Upcoming confirmed{upcomingConfirmed.length > 0 ? ` (${upcomingConfirmed.length})` : ''}
-        </h2>
-        {upcomingConfirmed.length === 0 ? (
-          <p className="rounded-2xl border border-dashed border-line px-4 py-6 text-center text-sm text-muted">
-            Nothing confirmed and upcoming yet.
+        <div className="mb-2 flex items-center gap-1.5">
+          <CalendarDays className="h-3.5 w-3.5 text-faint" aria-hidden />
+          <h2 className="font-display text-xs font-bold tracking-wide text-faint uppercase">
+            Calendar · {formatMonthYear(selectedDay)}
+          </h2>
+        </div>
+
+        <div className="flex items-center gap-2 overflow-x-auto pb-2">
+          {dayLinks.map((d) => {
+            const { weekday, day } = formatDayChip(d);
+            const isSelected = d === selectedDay;
+            const hasBookings = confirmedByDay.has(d);
+            return (
+              <Link
+                key={d}
+                href={`/dashboard/${venueId}?day=${d}`}
+                className={`relative flex-none rounded-2xl border px-3.5 py-2 text-center transition-all duration-200 ${
+                  isSelected
+                    ? 'border-transparent bg-gradient-to-br from-accent to-accent-strong text-white shadow-accent'
+                    : 'border-line bg-surface text-foreground-soft hover:border-accent hover:text-accent-strong'
+                }`}
+              >
+                {hasBookings ? (
+                  <span
+                    aria-hidden
+                    className={`absolute top-1.5 right-1.5 h-1.5 w-1.5 rounded-full ${
+                      isSelected ? 'bg-white' : 'bg-accent'
+                    }`}
+                  />
+                ) : null}
+                <span
+                  className={`block font-display text-[10px] font-bold tracking-wide uppercase ${isSelected ? 'text-white/80' : 'text-faint'}`}
+                >
+                  {weekday}
+                </span>
+                <span className="mt-0.5 block font-display text-sm font-extrabold">{day}</span>
+              </Link>
+            );
+          })}
+        </div>
+
+        {dayAgenda.length === 0 ? (
+          <p className="mt-2 rounded-2xl border border-dashed border-line px-4 py-6 text-center text-sm text-muted">
+            Nothing confirmed for this day.
           </p>
         ) : (
-          <ul className="flex flex-col gap-2">
-            {upcomingConfirmed.map((booking) => (
+          <ul className="mt-2 flex flex-col gap-2">
+            {dayAgenda.map((booking) => (
               <li
                 key={booking.id}
                 className="flex items-center justify-between gap-3 rounded-xl border border-line bg-surface px-3.5 py-2.5"
@@ -236,7 +331,8 @@ export default async function VenueDashboardPage({ params, searchParams }: Props
                     {booking.facilityName}
                   </p>
                   <p className="text-xs text-muted">
-                    {formatDateTime(booking.startAt, venue.timezone)} ·{' '}
+                    {formatTime(booking.startAt, venue.timezone)}–
+                    {formatTime(booking.endAt, venue.timezone)} ·{' '}
                     {booking.customerName ?? 'Marketplace customer'}
                   </p>
                 </div>
@@ -280,6 +376,89 @@ export default async function VenueDashboardPage({ params, searchParams }: Props
             ))}
           </ul>
         )}
+      </section>
+
+      <section className="mt-8">
+        <div className="mb-2 flex items-center gap-1.5">
+          <Users className="h-3.5 w-3.5 text-faint" aria-hidden />
+          <h2 className="font-display text-xs font-bold tracking-wide text-faint uppercase">
+            Staff{staff.length > 0 ? ` (${staff.length})` : ''}
+          </h2>
+        </div>
+
+        <ul className="flex flex-col gap-2">
+          {staff.map((member) => {
+            const canRemove = !member.isSelf && canRemoveVenueMember(ctx, member.role);
+            return (
+              <li
+                key={member.id}
+                className="flex items-center justify-between gap-3 rounded-xl border border-line bg-surface px-3.5 py-2.5"
+              >
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-bold text-foreground">
+                    {member.fullName || member.email}
+                    {member.isSelf ? <span className="text-faint"> (you)</span> : null}
+                  </p>
+                  <p className="truncate text-xs text-muted">{member.email}</p>
+                </div>
+                <div className="flex flex-none items-center gap-2">
+                  <span className="rounded-full bg-surface-2 px-2 py-0.5 text-[10px] font-bold text-faint">
+                    {member.role}
+                  </span>
+                  {canRemove ? (
+                    <form action={removeStaffAction}>
+                      <input type="hidden" name="venueId" value={venueId} />
+                      <input type="hidden" name="memberId" value={member.id} />
+                      <button
+                        type="submit"
+                        title="Remove"
+                        aria-label={`Remove ${member.fullName || member.email}`}
+                        className="focus-visible:outline-accent flex h-7 w-7 items-center justify-center rounded-lg text-faint transition-colors hover:bg-danger-wash hover:text-danger focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" aria-hidden />
+                      </button>
+                    </form>
+                  ) : null}
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+
+        {canAddStaff ? (
+          <form
+            action={addStaffAction}
+            className="mt-3 flex flex-wrap items-center gap-2 rounded-2xl border border-dashed border-line px-3.5 py-3"
+          >
+            <input type="hidden" name="venueId" value={venueId} />
+            <UserPlus className="h-3.5 w-3.5 flex-none text-faint" aria-hidden />
+            <input
+              name="email"
+              type="email"
+              required
+              placeholder="Staff member's email"
+              className="min-w-0 flex-1 rounded-lg border border-line bg-surface px-2.5 py-1.5 text-xs text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+            />
+            <select
+              name="role"
+              required
+              defaultValue="RECEPTIONIST"
+              className="rounded-lg border border-line bg-surface px-2 py-1.5 text-xs font-bold text-foreground"
+            >
+              {VENUE_ROLE.map((role) => (
+                <option key={role} value={role}>
+                  {role}
+                </option>
+              ))}
+            </select>
+            <button
+              type="submit"
+              className="focus-visible:outline-accent rounded-lg bg-gradient-to-br from-accent to-accent-strong px-3 py-1.5 text-xs font-bold text-white shadow-accent transition-transform hover:-translate-y-0.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+            >
+              Add
+            </button>
+          </form>
+        ) : null}
       </section>
     </main>
   );

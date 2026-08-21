@@ -11,6 +11,8 @@ import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { getSessionActor } from '@/lib/auth/session';
 import { transitionBooking } from '@/domain/booking/transition';
+import { addVenueStaffMember, removeVenueStaffMember } from '@/domain/venue/staff';
+import { addVenueStaffSchema } from '@/lib/validation/venue-staff';
 import { DomainError } from '@/domain/errors';
 import type { VenueCancellationReason } from '@/lib/config/constants';
 
@@ -56,4 +58,54 @@ export async function rejectRequestAction(formData: FormData) {
   }
   revalidatePath(`/dashboard/${venueId}`);
   redirect(`/dashboard/${venueId}?rejected=1`);
+}
+
+export async function addStaffAction(formData: FormData) {
+  const actor = await getSessionActor();
+  const venueId = String(formData.get('venueId') ?? '');
+  if (!actor) redirect(`/sign-in?next=/dashboard/${venueId}`);
+
+  const parsed = addVenueStaffSchema.safeParse({
+    email: formData.get('email'),
+    role: formData.get('role'),
+  });
+  if (!parsed.success) {
+    const message = parsed.error.issues[0]?.message ?? 'Check the staff details and try again.';
+    redirect(`/dashboard/${venueId}?error=${encodeURIComponent(message)}`);
+  }
+
+  try {
+    await addVenueStaffMember(
+      venueId,
+      { userId: actor.userId, isPlatformAdmin: actor.isPlatformAdmin },
+      parsed.data,
+    );
+  } catch (err) {
+    const message =
+      err instanceof DomainError ? err.message : 'Something went wrong. Please try again.';
+    redirect(`/dashboard/${venueId}?error=${encodeURIComponent(message)}`);
+  }
+  revalidatePath(`/dashboard/${venueId}`);
+  redirect(`/dashboard/${venueId}?staffAdded=1`);
+}
+
+export async function removeStaffAction(formData: FormData) {
+  const actor = await getSessionActor();
+  const venueId = String(formData.get('venueId') ?? '');
+  if (!actor) redirect(`/sign-in?next=/dashboard/${venueId}`);
+
+  const memberId = String(formData.get('memberId') ?? '');
+  try {
+    await removeVenueStaffMember(
+      venueId,
+      { userId: actor.userId, isPlatformAdmin: actor.isPlatformAdmin },
+      memberId,
+    );
+  } catch (err) {
+    const message =
+      err instanceof DomainError ? err.message : 'Something went wrong. Please try again.';
+    redirect(`/dashboard/${venueId}?error=${encodeURIComponent(message)}`);
+  }
+  revalidatePath(`/dashboard/${venueId}`);
+  redirect(`/dashboard/${venueId}?staffRemoved=1`);
 }
